@@ -474,7 +474,7 @@ SARIF 2.1.0 format for CI/CD integration:
 ### GitHub Actions
 
 ```yaml
-name: APK Security Scan
+name: APK Raccoon Scan
 
 on:
   push:
@@ -519,7 +519,7 @@ jobs:
 ### GitLab CI
 
 ```yaml
-apk-security-scan:
+apk-raccoon-scan:
   image: docker:latest
   services:
     - docker:dind

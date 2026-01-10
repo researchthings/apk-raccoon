@@ -1,5 +1,5 @@
 # =============================================================================
-# Android APK Security Scanner - Hardened Dockerfile
+# APK Raccoon - Hardened Dockerfile
 # =============================================================================
 # Security features:
 # - All downloaded binaries verified with SHA256 checksums
@@ -95,7 +95,7 @@ FROM python:3.11-slim-bookworm
 
 # Labels for image metadata
 LABEL maintainer="Randy Grant <rgrant.research@gmail.com>"
-LABEL description="Android APK Security Scanner - OWASP MASVS/MSTG aligned"
+LABEL description="APK Raccoon - Android APK Security Scanner with OWASP MASVS/MSTG coverage"
 LABEL version="2.0"
 
 # Install only runtime dependencies (no wget/curl needed in final image)
@@ -172,11 +172,11 @@ CMD ["--help"]
 
 # =============================================================================
 # Build instructions:
-#   docker build -t android-apk-scanner .
+#   docker build -t apk-raccoon .
 #
 # Run instructions:
 #   docker run --rm -v /path/to/apks:/input -v /path/to/output:/output \
-#     -e AUDIT_DIR=/output android-apk-scanner /input/app.apk
+#     -e AUDIT_DIR=/output apk-raccoon /input/app.apk
 #
 # To update tool versions:
 #   1. Update ENV *_VERSION variables above
