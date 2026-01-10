@@ -1,0 +1,11 @@
+# Core dependencies
+androguard>=3.3.5
+lxml>=5.2
+rich>=13.7
+click>=8.1
+requests>=2.32
+pandas>=2.2
+beautifulsoup4>=4.12
+pyyaml>=6.0
+cryptography>=42
+pycryptodome>=3.20

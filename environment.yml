@@ -1,0 +1,42 @@
+# APK Raccoon - Conda Environment
+#
+# Usage:
+#   conda env create -f environment.yml
+#   conda activate apk-raccoon
+#
+# For development (testing, linting), uncomment the dev section below
+# or install dev deps separately: pip install pytest pytest-cov ruff mypy
+
+name: apk-raccoon
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python version
+  - python>=3.10
+
+  # Core dependencies
+  - pip>=23.0
+  - lxml>=5.2
+  - requests>=2.32
+  - pandas>=2.2
+  - beautifulsoup4>=4.12
+  - pyyaml>=6.0
+  - cryptography>=42
+
+  # CLI and formatting
+  - rich>=13.7
+  - click>=8.1
+
+  # === Uncomment for development ===
+  # - pytest>=7.0.0
+  # - pytest-cov>=4.0.0
+  # - mypy>=1.0.0
+  # - ruff>=0.1.0
+
+  # Install remaining packages via pip
+  - pip:
+      - androguard>=3.3.5
+      - pycryptodome>=3.20

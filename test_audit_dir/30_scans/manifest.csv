@@ -1,0 +1,2 @@
+Source,RuleID,Title,Location,Evidence,Severity,HowFound
+manifest,MANI_DEBUGGABLE,Test title,test loc,test ev,High,XML

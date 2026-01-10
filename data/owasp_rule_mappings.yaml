@@ -1,0 +1,1945 @@
+rules:
+  MANI_DEBUGGABLE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-2]
+    mitre_keywords: [debug, reverse engineering, tamper]
+    why: Enabling debuggable mode in production allows attackers to attach debuggers, inspect memory, and reverse engineer the app, leading to potential extraction of sensitive data or IP.
+    how: Set android:debuggable="false" in the AndroidManifest.xml for release builds. Use build variants in build.gradle to control this flag.
+  MANI_EXPORTED:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [exposed component, inter-app communication]
+    why: Exported components without proper protections can be invoked by malicious apps, leading to unauthorized actions, data leakage, or denial of service.
+    how: Set android:exported="false" for components that don't need to be public. If exposure is necessary, protect with custom permissions (android:permission) and validate intents.
+  MANI_DANGEROUS_PERM:
+    owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mitre_keywords: [permission escalation, over-privileged]
+    why: Requesting dangerous permissions increases the app's attack surface and may expose sensitive user data if not handled securely.
+    how: Minimize permissions in the manifest. Use runtime permission requests for dangerous permissions. Regularly audit and justify each permission.
+  SECRET_AWS_ACCESS_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [hardcoded credential, secret leakage]
+    why: Hardcoded AWS access keys can be easily extracted from the APK via reverse engineering, allowing unauthorized access to cloud resources.
+    how: Store credentials securely using Android Keystore or fetch them dynamically from a secure backend. Avoid committing secrets to code repositories.
+  SECRET_AWS_SECRET:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [hardcoded secret, credential exposure]
+    why: Hardcoded AWS secrets compromise cloud security, enabling attackers to impersonate the app and access sensitive data or services.
+    how: Use AWS IAM roles or temporary credentials via STS. Integrate with secure vault services like AWS Secrets Manager for runtime retrieval.
+  SECRET_GOOGLE_API_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [api key leakage, service abuse]
+    why: Exposed Google API keys can lead to quota exhaustion, unauthorized API usage, or billing attacks if extracted from the app.
+    how: Restrict API keys in Google Cloud Console to specific apps/packages. Use proxy servers to hide keys or fetch them securely at runtime.
+  SECRET_PRIVATE_KEY:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [private key exposure, decryption]
+    why: Hardcoded private keys allow attackers to decrypt sensitive data or forge signatures, compromising encryption and authenticity.
+    how: Generate keys at runtime or store in Android Keystore. Use hardware-backed storage for high-security needs.
+  SECRET_BASIC_AUTH:
+    owasp: [MASVS-AUTH-2, MSTG-AUTH-1]
+    mitre_keywords: [basic auth, credential interception]
+    why: Basic auth credentials in code are easily reversible and vulnerable to interception if transmitted over networks.
+    how: Switch to token-based auth (e.g., OAuth). If needed, derive credentials dynamically and transmit over HTTPS only.
+  CRYPTO_ECB_MODE:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-3]
+    mitre_keywords: [weak encryption, pattern leakage]
+    why: ECB mode doesn't hide data patterns, making it insecure for encrypting similar or structured data, leading to information leakage.
+    how: Use authenticated modes like GCM or CCM. Update Cipher.getInstance to "AES/GCM/NoPadding".
+  CRYPTO_DES:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [deprecated crypto, brute force]
+    why: DES is obsolete with a small key size, vulnerable to brute-force attacks and not suitable for modern security needs.
+    how: Migrate to AES with at least 128-bit keys. Refactor code to use stronger algorithms.
+  CRYPTO_RC2:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [weak cipher, key recovery]
+    why: RC2 has known vulnerabilities and weak key strengths, making it unsuitable for protecting sensitive data.
+    how: Replace with modern ciphers like AES. Ensure key sizes meet current standards (e.g., 256-bit).
+  CRYPTO_NPADDING:
+    owasp: [MASVS-CRYPTO-4, MSTG-CRYPTO-4]
+    mitre_keywords: [padding oracle, no padding]
+    why: No padding can lead to length extension attacks or require manual padding, increasing error risk.
+    how: Use standard padding like PKCS7. Change to modes that include padding or authenticated encryption.
+  CRYPTO_MD5:
+    owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mitre_keywords: [collision attack, hash weakness]
+    why: MD5 is collision-prone and not secure for integrity checks or passwords, allowing forgery.
+    how: Use SHA-256 or better for hashing. For passwords, use bcrypt or Argon2.
+  CRYPTO_SHA1:
+    owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mitre_keywords: [collision, deprecated hash]
+    why: SHA1 has practical collision attacks, compromising integrity in signatures or certificates.
+    how: Upgrade to SHA-256/SHA-3. Update MessageDigest instances accordingly.
+  CRYPTO_STATIC_IV:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [iv reuse, predictability]
+    why: Static IVs make encryption deterministic, allowing pattern analysis and replay attacks.
+    how: Generate random IVs per encryption. Use SecureRandom and store IV with ciphertext.
+  LOG_SENSITIVE:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [log leakage, sensitive data]
+    why: Logging sensitive info can persist in device logs, accessible to attackers or other apps.
+    how: Mask or avoid logging PII. Use logging levels and build config to strip in release.
+  PREFS_WORLD_READABLE:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-1]
+    mitre_keywords: [shared storage, data exposure]
+    why: World-readable prefs allow other apps to read sensitive data, violating isolation.
+    how: Use MODE_PRIVATE. Encrypt sensitive prefs with EncryptedSharedPreferences.
+  PREFS_PLAINTEXT_WRITE:
+    owasp: [MASVS-STORAGE-4, MSTG-STORAGE-4]
+    mitre_keywords: [plaintext storage, extraction]
+    why: Plaintext storage of data in prefs is extractable from rooted devices or backups.
+    how: Use EncryptedSharedPreferences from AndroidX Security library.
+  EXT_STORAGE_WRITE:
+    owasp: [MASVS-STORAGE-5, MSTG-STORAGE-5]
+    mitre_keywords: [external storage, public data]
+    why: External storage is publicly accessible, risking data exposure if not protected.
+    how: Use internal storage or scoped storage. Encrypt files if external is needed.
+  WEBVIEW_IGNORE_SSL:
+    owasp: [MASVS-NETWORK-3, MSTG-NETWORK-3]
+    mitre_keywords: [ssl ignore, mitm]
+    why: Ignoring SSL errors allows man-in-the-middle attacks, compromising data integrity.
+    how: Handle SSL errors properly; do not call proceed(). Use cert pinning.
+  WEBVIEW_JS_ENABLED:
+    owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mitre_keywords: [js injection, xss]
+    why: Enabling JS in WebView without controls risks XSS if loading untrusted content.
+    how: Disable JS if not needed. Use addJavascriptInterface cautiously with @JavascriptInterface.
+  WEBVIEW_FILE_ACCESS:
+    owasp: [MASVS-PLATFORM-7, MSTG-PLATFORM-7]
+    mitre_keywords: [file access, local file inclusion]
+    why: Allowing file access in WebView can lead to local file inclusion vulnerabilities.
+    how: Set setAllowFileAccess(false). Avoid loading local files unless sanitized.
+  NET_CLEARTEXT:
+    owasp: [MASVS-NETWORK-1, MSTG-NETWORK-1]
+    mitre_keywords: [cleartext, sniffing]
+    why: Cleartext traffic is interceptable, leading to data theft on open networks.
+    how: Set android:usesCleartextTraffic="false". Enforce HTTPS in network security config.
+  NET_HTTP:
+    owasp: [MASVS-NETWORK-2, MSTG-NETWORK-2]
+    mitre_keywords: [http, unencrypted]
+    why: HTTP connections are unencrypted, vulnerable to eavesdropping and tampering.
+    how: Migrate to HTTPS. Redirect HTTP to HTTPS in code if needed.
+  NET_NO_PINNING:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [trust manager, certificate pinning]
+    why: Custom trust managers without pinning allow rogue certificates in MiTM attacks.
+    how: Implement HPKP or certificate pinning with TrustKit or custom TrustManager.
+  NET_INSECURE_URL:
+    owasp: [MASVS-NETWORK-2, MSTG-NETWORK-2]
+    mitre_keywords: [insecure url, http link]
+    why: Hardcoded HTTP URLs bypass network security configs, risking unencrypted comms.
+    how: Replace with HTTPS URLs. Use HSTS for domains.
+  SBOM_UNKNOWN:
+    owasp: [MASVS-RESILIENCE-4, MSTG-RESILIENCE-4]
+    mitre_keywords: [supply chain, vuln lib]
+    why: Vulnerable libraries in SBOM can be exploited, leading to app compromise.
+    how: Update libraries to patched versions. Monitor with dependency-check tools.
+  IPC_EXPORTED:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [ipc, exposed]
+    why: Exported IPC endpoints allow inter-app attacks if not secured.
+    how: Validate senders in onReceive/onBind. Use signatures for permissions.
+  DYNAMIC_NO_DEVICE:
+    owasp: []
+    mitre_keywords: []
+    why: No device available for dynamic testing; static results only.
+    how: Connect a device/emulator and re-run with adb enabled.
+  DYNAMIC_ADB_ERROR:
+    owasp: []
+    mitre_keywords: []
+    why: ADB probe failed; possibly no device or config issue.
+    how: Ensure adb is running and device is connected/authorized.
+  AUTH_WEAK_PASSWORD:
+    owasp: [MASVS-AUTH-1, MSTG-AUTH-2]
+    mitre_keywords: [weak auth, brute force]
+    why: Weak password policies allow easy guessing or cracking.
+    how: Enforce min length 8, complexity (upper/lower/num/special). Use biometrics.
+  AUTH_NO_SESSION:
+    owasp: [MASVS-AUTH-3, MSTG-AUTH-3]
+    mitre_keywords: [session hijack, replay]
+    why: Lack of session management enables replay or fixation attacks.
+    how: Use secure tokens with expiration. Implement logout and invalidation.
+  AUTH_HTTP_LOGIN:
+    owasp: [MASVS-AUTH-4, MSTG-AUTH-1]
+    mitre_keywords: [http auth, credential sniff]
+    why: HTTP for login transmits credentials in cleartext.
+    how: Force HTTPS for auth endpoints. Use TLS 1.3+.
+  AUTH_IDOR:
+    owasp: [MASVS-AUTH-5, MSTG-AUTH-4]
+    mitre_keywords: [idor, access control]
+    why: Insecure direct object references allow unauthorized resource access.
+    how: Validate user ownership on server-side. Use indirect references.
+  AUTH_EXPORTED_NO_PERM:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [exported no perm, unauthorized invoke]
+    why: Exported components without permissions are invocable by any app.
+    how: Add android:permission to restrict access. Use signature level for sensitive.
+  INJ_SQL:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [sql injection, database]
+    why: Dynamic SQL allows injection, leading to data exfil or modification.
+    how: Use prepared statements or Room ORM. Sanitize inputs.
+  INJ_COMMAND:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [command injection, shell]
+    why: Unsanitized exec allows arbitrary command execution.
+    how: Avoid Runtime.exec with user input. Use ProcessBuilder with validation.
+  INJ_XSS:
+    owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mitre_keywords: [xss, webview]
+    why: XSS in WebView can steal data or execute JS in app context.
+    how: Sanitize inputs to loadUrl/loadData. Disable JS if possible.
+  INJ_PATH_TRAVERSAL:
+    owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mitre_keywords: [path traversal, file access]
+    why: Unsanitized file paths allow reading arbitrary files.
+    how: Canonicalize paths with File.getCanonicalPath. Restrict to app dirs.
+  INJ_NO_VALIDATION:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [input validation, exploit]
+    why: No input validation allows malformed data to crash or exploit app.
+    how: Validate all inputs (intents, params) with patterns/whitelists.
+  BIN_NO_ROOT_DETECT:
+    owasp: [MASVS-RESILIENCE-1, MSTG-RESILIENCE-1]
+    mitre_keywords: [root detection, anti-tamper]
+    why: No root check allows running on compromised devices, easing attacks.
+    how: Use libraries like RootBeer. Gracefully exit or limit functionality if rooted.
+  BIN_NO_ANTI_DEBUG:
+    owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mitre_keywords: [anti-debug, reverse]
+    why: Lack of anti-debug allows easy runtime inspection.
+    how: Check Debug.isDebuggerConnected or use ptrace. Obfuscate with ProGuard.
+  BIN_NO_OBFUSCATION:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-3]
+    mitre_keywords: [obfuscation, code protection]
+    why: Unobfuscated code is easy to reverse engineer.
+    how: Enable minifyEnabled and use ProGuard/R8 in build.gradle.
+  BIN_EMULATOR_DETECT:
+    owasp: [MASVS-RESILIENCE-1, MSTG-RESILIENCE-1]
+    mitre_keywords: [emulator detection, anti-analysis]
+    why: No emulator check allows analysis in controlled environments.
+    how: Check Build.FINGERPRINT for "generic" or use emulator properties.
+  PRIV_PII_IN_CODE:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [pii hardcoded, privacy violation]
+    why: Hardcoded PII risks exposure and violates GDPR/CCPA.
+    how: Remove hardcoded data. Use test placeholders in code.
+  PRIV_EXCESS_PERM:
+    owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mitre_keywords: [excess permission, privacy]
+    why: Unnecessary permissions collect excess data, eroding user trust.
+    how: Audit manifest; remove unused. Explain in privacy policy.
+  PRIV_NO_ENCRYPT_PII:
+    owasp: [MASVS-STORAGE-4, MSTG-STORAGE-4]
+    mitre_keywords: [unencrypted pii, data breach]
+    why: Unencrypted PII in storage is vulnerable to extraction.
+    how: Use EncryptedSharedPreferences or SQLCipher for databases.
+  PRIV_DATA_SHARE:
+    owasp: [MASVS-NETWORK-5, MSTG-NETWORK-5]
+    mitre_keywords: [data sharing, tracking]
+    why: Uncontrolled sharing of PII can lead to privacy leaks.
+    how: Obtain user consent. Use anonymized data where possible.
+
+  # ============================================================================
+  # Certificate Pinning Rules (scan_cert_pinning.py)
+  # ============================================================================
+  PIN_IMPLEMENTATION_FOUND:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, ssl, mitm]
+    why: Certificate pinning implementation detected. This helps prevent MITM attacks.
+    how: Informational - verify pinning is correctly configured and pins are up-to-date.
+  PIN_CONFIG_EMPTY:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, empty config]
+    why: Empty pin-set in network security config provides no MITM protection.
+    how: Add certificate pins (SHA-256 fingerprints) to the pin-set element.
+  PIN_CONFIG_EXPIRATION:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, expiration]
+    why: Certificate pins have expiration dates; if expired, pinning stops protecting.
+    how: Monitor expiration dates and update pins before they expire.
+  PIN_MISSING_SENSITIVE:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, sensitive endpoint]
+    why: Sensitive domain without certificate pinning is vulnerable to MITM attacks.
+    how: Add certificate pins for domains handling authentication, payments, or PII.
+  PIN_DEBUG_USER_CERTS:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [debug, user certificates]
+    why: Debug builds trust user-installed certificates, allowing interception for testing.
+    how: Ensure release builds do not include debug-overrides with user certificate trust.
+  PIN_BASE_CLEARTEXT:
+    owasp: [MASVS-NETWORK-1, MSTG-NETWORK-1]
+    mitre_keywords: [cleartext, http]
+    why: Base config permits cleartext traffic, allowing unencrypted connections by default.
+    how: Set cleartextTrafficPermitted="false" in base-config. Use domain-config for exceptions.
+  PIN_BYPASS_TRUSTMANAGER:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-3]
+    mitre_keywords: [trust manager, bypass, mitm]
+    why: TrustManager initialized with null KeyStore accepts all certificates, bypassing SSL.
+    how: Use proper KeyStore initialization. Implement certificate pinning correctly.
+  PIN_BYPASS_EMPTY_PINS:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, empty]
+    why: CertificatePinner built without pins provides no protection.
+    how: Add at least 2 pins (primary and backup) using .add(hostname, pin) method.
+  PIN_BYPASS_REFLECTION:
+    owasp: [MASVS-NETWORK-4, MSTG-RESILIENCE-4]
+    mitre_keywords: [reflection, bypass, tampering]
+    why: Reflection used to modify SSL components may indicate pinning bypass code.
+    how: Remove reflection-based SSL modifications. Use proper pinning implementation.
+  PIN_BYPASS_UNSAFE_HOSTNAME:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-3]
+    mitre_keywords: [hostname verification, bypass]
+    why: Disabled hostname verification allows MITM with any valid certificate.
+    how: Use default hostname verifier. Never use ALLOW_ALL_HOSTNAME_VERIFIER.
+  PIN_DEBUG_BYPASS:
+    owasp: [MASVS-NETWORK-4, MSTG-RESILIENCE-2]
+    mitre_keywords: [debug, bypass, pinning]
+    why: Pinning disabled in debug builds may accidentally ship to production.
+    how: Use build variants to ensure debug-only code is excluded from release builds.
+  PIN_XPOSED_BYPASS:
+    owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mitre_keywords: [xposed, hook, bypass]
+    why: Xposed framework references suggest hooking capability for runtime modifications.
+    how: Informational - consider anti-hooking measures for sensitive apps.
+  PIN_FRIDA_BYPASS:
+    owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mitre_keywords: [frida, dynamic analysis, hook]
+    why: Frida references suggest dynamic instrumentation capability.
+    how: Informational - consider anti-frida measures for sensitive apps.
+  PIN_MISSING_FOR_SENSITIVE:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, sensitive data]
+    why: Sensitive endpoints found without certificate pinning implementation.
+    how: Implement certificate pinning for endpoints handling auth, payments, or PII.
+  PIN_NONE_FOUND:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, missing]
+    why: No certificate pinning detected. App is vulnerable to MITM with rogue certificates.
+    how: Implement pinning via network_security_config.xml or OkHttp CertificatePinner.
+
+  # ============================================================================
+  # Content Provider Rules (scan_content_providers.py)
+  # ============================================================================
+  CP_EXPORTED_NO_PERMISSION:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [content provider, exported, data leak]
+    why: Exported provider without permissions allows any app to read/write data.
+    how: Add android:permission, readPermission, or writePermission. Set exported=false if internal.
+  CP_EXPORTED_GRANT_URI:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [content provider, uri permission]
+    why: Exported provider with grantUriPermissions enables dynamic permission grants.
+    how: Remove grantUriPermissions if not needed, or restrict with path-permission.
+  CP_PATH_NO_PERMISSION:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [content provider, path permission]
+    why: path-permission without protection leaves specific paths accessible.
+    how: Add permission attribute to path-permission elements.
+  CP_NO_SIGNATURE_PERM:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [content provider, signature permission]
+    why: Exported provider without signature permission is accessible to third-party apps.
+    how: Use signature-level protection for sensitive providers.
+  CP_SQL_INJECTION_CONCAT:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [sql injection, content provider]
+    why: SQL query with string concatenation allows injection attacks.
+    how: Use parameterized queries with selection args. Never concatenate user input.
+  CP_SQL_INJECTION_FORMAT:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [sql injection, string format]
+    why: SQL query using String.format is vulnerable to injection.
+    how: Use ? placeholders with selection args array.
+  CP_SQL_INJECTION_INTERPOLATE:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [sql injection, string interpolation]
+    why: SQL query with string interpolation allows injection.
+    how: Use parameterized queries. Avoid embedding variables in SQL strings.
+  CP_RAW_QUERY_NO_ARGS:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [sql injection, raw query]
+    why: rawQuery with WHERE clause but null selection args may be injectable.
+    how: Pass values via selectionArgs parameter, not in the query string.
+  CP_PATH_TRAVERSAL_OPENFILE:
+    owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mitre_keywords: [path traversal, file access, content provider]
+    why: openFile() constructing path from URI without validation allows directory traversal.
+    how: Canonicalize paths with getCanonicalPath(). Verify path starts with allowed directory.
+  CP_PATH_NO_CANONICALIZE:
+    owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mitre_keywords: [path traversal, canonicalization]
+    why: File path from URI without canonicalization may contain ../sequences.
+    how: Call getCanonicalPath() and verify the result is within expected directory.
+  CP_MISSING_PATH_CHECK:
+    owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mitre_keywords: [path traversal, validation]
+    why: openFile() may lack path traversal protections.
+    how: Add canonicalization and startsWith check for allowed base directory.
+  CP_WORLD_READABLE:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-1]
+    mitre_keywords: [world readable, file permission]
+    why: World-readable file mode exposes data to all apps on device.
+    how: Use MODE_PRIVATE. Share files via FileProvider with proper permissions.
+  CP_WORLD_WRITEABLE:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-1]
+    mitre_keywords: [world writable, file permission]
+    why: World-writable file mode allows any app to modify data.
+    how: Use MODE_PRIVATE. Never use MODE_WORLD_WRITEABLE.
+  CP_GRANT_URI_WRITE:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [uri permission, write access]
+    why: Granting URI write permission allows recipient to modify provider data.
+    how: Only grant to trusted components. Prefer read-only when possible.
+  CP_GRANT_URI_PERSISTABLE:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [uri permission, persistable]
+    why: Persistable URI permissions survive reboots, extending access window.
+    how: Only use when necessary. Prefer one-time grants for sensitive data.
+  CP_GRANT_URI_PREFIX:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [uri permission, prefix, broad access]
+    why: Prefix URI permission grants access to entire subtree of URIs.
+    how: Grant specific URIs when possible. Restrict prefix scope.
+
+  # ============================================================================
+  # PendingIntent Rules (scan_pending_intents.py)
+  # ============================================================================
+  PI_TARGET_SDK_31:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, android 12]
+    why: App targets Android 12+; FLAG_IMMUTABLE or FLAG_MUTABLE is required.
+    how: Informational - verify all PendingIntents specify mutability flags.
+  PI_MISSING_FLAG:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, flag, mutability]
+    why: PendingIntent without FLAG_IMMUTABLE/FLAG_MUTABLE crashes on Android 12+.
+    how: Add FLAG_IMMUTABLE unless you need to modify the intent later.
+  PI_EMPTY_INTENT:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, empty intent, redirect]
+    why: Empty base Intent in PendingIntent can be filled by attacker (intent redirect).
+    how: Always create PendingIntent with explicit, complete Intent.
+  PI_IMPLICIT_INTENT:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, implicit, intercept]
+    why: Implicit Intent in PendingIntent can be intercepted by malicious apps.
+    how: Use explicit Intent with setComponent/setClass/setClassName.
+  PI_MUTABLE_IMPLICIT:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, mutable, implicit, redirect]
+    why: Mutable PendingIntent with implicit Intent is critical intent redirect vulnerability.
+    how: Use FLAG_IMMUTABLE with explicit Intent. Never combine mutable + implicit.
+  PI_BROADCAST_IMPLICIT:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, broadcast, receiver]
+    why: Broadcast PendingIntent without explicit receiver can be caught by any app.
+    how: Set explicit component or use setPackage() to restrict recipients.
+  PI_GETPARCELABLE_INTENT:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, parcelable, untrusted]
+    why: Intent extracted from extras may be from untrusted source.
+    how: Validate extracted intents before using in PendingIntent.
+  PI_INTENT_SETDATA_EXTRA:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, data, redirect]
+    why: Setting intent data from another intent may enable redirect attacks.
+    how: Validate and sanitize data URIs from external sources.
+  PI_SUMMARY:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [pending intent, summary]
+    why: Summary of PendingIntent usage in codebase.
+    how: Review each PendingIntent for proper flag and intent configuration.
+
+  # ============================================================================
+  # Additional Secret Patterns (detect_secrets.py v2.0)
+  # ============================================================================
+  SECRET_GCP_API_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [api key, google cloud]
+    why: Exposed Google Cloud API keys can be abused for service access.
+    how: Restrict API keys in GCP Console. Use Android-specific key restrictions.
+  SECRET_GCP_SERVICE_ACCOUNT:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [service account, gcp, credentials]
+    why: Service account JSON contains full credentials for GCP access.
+    how: Never embed service account JSON in apps. Use mobile-appropriate auth flows.
+  SECRET_GITHUB_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [github, token, source code]
+    why: GitHub tokens enable access to repositories, potentially including other secrets.
+    how: Revoke exposed tokens immediately. Use fine-grained tokens with minimal scope.
+  SECRET_GITHUB_OAUTH:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [github, oauth, token]
+    why: GitHub OAuth tokens provide authenticated API access.
+    how: Store tokens securely on backend. Never embed in mobile apps.
+  SECRET_GITLAB_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [gitlab, token, source code]
+    why: GitLab tokens enable repository and CI/CD access.
+    how: Revoke and rotate exposed tokens. Use project-specific tokens.
+  SECRET_SLACK_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [slack, token, messaging]
+    why: Slack tokens allow reading/posting messages and accessing workspace data.
+    how: Revoke token in Slack admin. Use proper OAuth flows for integrations.
+  SECRET_SLACK_WEBHOOK:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [slack, webhook, messaging]
+    why: Slack webhooks allow posting messages to channels.
+    how: Rotate webhook URL. Consider if webhook is needed in mobile app.
+  SECRET_DISCORD_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [discord, bot, token]
+    why: Discord bot tokens provide full bot API access.
+    how: Regenerate token in Discord Developer Portal. Never embed in apps.
+  SECRET_DISCORD_WEBHOOK:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [discord, webhook]
+    why: Discord webhooks allow posting to channels.
+    how: Delete and recreate webhook. Move to server-side integration.
+  SECRET_STRIPE_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [stripe, payment, secret key]
+    why: Stripe live secret key allows full access to payment processing.
+    how: Roll key immediately in Stripe Dashboard. Never use secret keys in mobile.
+  SECRET_STRIPE_RESTRICTED:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [stripe, restricted key]
+    why: Stripe restricted keys still provide payment API access.
+    how: Review and revoke unnecessary keys. Use publishable keys in mobile.
+  SECRET_PAYPAL_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [paypal, token, payment]
+    why: PayPal access tokens enable payment operations.
+    how: Tokens should be server-side only. Use PayPal SDK properly.
+  SECRET_FIREBASE_URL:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [firebase, database url]
+    why: Firebase database URL exposure enables database enumeration.
+    how: Ensure security rules are properly configured to restrict access.
+  SECRET_FIREBASE_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [firebase, fcm, server key]
+    why: Firebase Cloud Messaging server key allows sending push to any device.
+    how: Regenerate FCM key. Server keys must remain server-side only.
+  SECRET_JWT:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [jwt, token, session]
+    why: Hardcoded JWTs may contain sensitive claims or provide persistent access.
+    how: Remove hardcoded tokens. JWTs should be dynamically obtained.
+  SECRET_BEARER_TOKEN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [bearer, token, auth]
+    why: Bearer tokens provide authenticated API access.
+    how: Remove hardcoded tokens. Obtain dynamically via proper auth flow.
+  SECRET_RSA_PRIVATE:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [rsa, private key, crypto]
+    why: RSA private key enables decryption and signature forgery.
+    how: Remove from code. Use Android Keystore for key storage.
+  SECRET_EC_PRIVATE:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [ec, private key, crypto]
+    why: EC private key enables ECDSA signature forgery and ECDH key agreement.
+    how: Store in Android Keystore. Never embed in application code.
+  SECRET_DSA_PRIVATE:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [dsa, private key, crypto]
+    why: DSA private key enables signature forgery.
+    how: Remove from code. Use hardware-backed key storage.
+  SECRET_OPENSSH_PRIVATE:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [ssh, private key]
+    why: SSH private key enables server authentication.
+    how: Remove from mobile code. SSH keys should not be in mobile apps.
+  SECRET_PGP_PRIVATE:
+    owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mitre_keywords: [pgp, private key, encryption]
+    why: PGP private key enables decryption of encrypted messages.
+    how: Do not embed PGP keys. Use secure key management if needed.
+  SECRET_MONGODB_URI:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [mongodb, connection string, database]
+    why: MongoDB URI with credentials allows direct database access.
+    how: Use backend API instead of direct DB access. Rotate credentials.
+  SECRET_POSTGRES_URI:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [postgresql, connection string, database]
+    why: PostgreSQL URI with credentials enables database access.
+    how: Mobile apps should never connect directly to databases.
+  SECRET_MYSQL_URI:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [mysql, connection string, database]
+    why: MySQL URI with credentials allows database manipulation.
+    how: Remove direct database access. Use authenticated backend API.
+  SECRET_PASSWORD_ASSIGN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [password, hardcoded]
+    why: Hardcoded password can be extracted via reverse engineering.
+    how: Remove hardcoded passwords. Use proper authentication flows.
+  SECRET_API_KEY_ASSIGN:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [api key, hardcoded]
+    why: Hardcoded API key is extractable and may grant service access.
+    how: Fetch keys from secure backend or use Android-restricted API keys.
+
+  # ============================================================================
+  # Additional Network Security Rules (scan_network_security.py v2.0)
+  # ============================================================================
+  NET_CLEARTEXT_ENABLED:
+    owasp: [MASVS-NETWORK-1, MSTG-NETWORK-1]
+    mitre_keywords: [cleartext, manifest, http]
+    why: android:usesCleartextTraffic=true permits all HTTP connections.
+    how: Set to false. Use network_security_config.xml for specific exceptions.
+  NET_SECURITY_CONFIG:
+    owasp: [MASVS-NETWORK-1, MSTG-NETWORK-1]
+    mitre_keywords: [network security config]
+    why: Custom network security configuration detected.
+    how: Review network_security_config.xml for proper HTTPS and pinning settings.
+  NET_HTTP_URL:
+    owasp: [MASVS-NETWORK-2, MSTG-NETWORK-2]
+    mitre_keywords: [http, cleartext, url]
+    why: HTTP URL in code transmits data unencrypted.
+    how: Change to HTTPS. Update all hardcoded URLs.
+  NET_TRUST_ALL_CERTS:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-3]
+    mitre_keywords: [trust manager, all certificates, mitm]
+    why: TrustManager accepting all certificates enables MITM attacks.
+    how: Use proper certificate validation. Implement certificate pinning.
+  NET_HOSTNAME_BYPASS:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-3]
+    mitre_keywords: [hostname verification, bypass]
+    why: HostnameVerifier returning true for all hosts bypasses SSL protection.
+    how: Use default HostnameVerifier. Never implement verify() to return true.
+  NET_SSL_ERROR_BYPASS:
+    owasp: [MASVS-NETWORK-3, MSTG-NETWORK-3]
+    mitre_keywords: [ssl error, webview, bypass]
+    why: WebView SSL error handler calling proceed() ignores certificate errors.
+    how: Call cancel() on SSL errors. Show user warning for certificate issues.
+  NET_NO_CERT_PINNING:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mitre_keywords: [certificate pinning, https client]
+    why: HTTPS client without certificate pinning trusts any valid certificate.
+    how: Add CertificatePinner to OkHttpClient. Configure network_security_config.xml.
+
+  # ============================================================================
+  # Additional Privacy Rules (scan_privacy_issues.py v2.0)
+  # ============================================================================
+  PRIV_HIGH_SENS_PERM:
+    owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mitre_keywords: [permission, high sensitivity, privacy]
+    why: High-sensitivity permission requested (location, contacts, camera, etc.).
+    how: Justify necessity in privacy policy. Implement runtime permission requests.
+  PRIV_EXCESSIVE_PERMS:
+    owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mitre_keywords: [permission, excessive, over-collection]
+    why: Many dangerous permissions requested; potential over-collection of data.
+    how: Audit each permission. Remove unnecessary ones. Document justification.
+  PRIV_SSN_HARDCODED:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [ssn, pii, hardcoded]
+    why: Hardcoded Social Security Number violates privacy regulations.
+    how: Remove immediately. Use test data placeholders in code.
+  PRIV_CC_HARDCODED:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [credit card, pii, pci]
+    why: Hardcoded credit card number violates PCI-DSS.
+    how: Remove immediately. Never store card numbers in code.
+  PRIV_BANK_HARDCODED:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [bank account, financial, hardcoded]
+    why: Hardcoded bank account numbers expose financial data.
+    how: Remove from code. Use test placeholders for development.
+  PRIV_EMAIL_COLLECT:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [email, collection, privacy]
+    why: Email collection should have explicit user consent.
+    how: Ensure consent is obtained before collection. Document in privacy policy.
+  PRIV_PHONE_COLLECT:
+    owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mitre_keywords: [phone, collection, privacy]
+    why: Phone number collection requires user consent.
+    how: Obtain explicit consent. Explain purpose in privacy policy.
+  PRIV_DATA_SHARE_ANALYTICS:
+    owasp: [MASVS-NETWORK-5, MSTG-NETWORK-5]
+    mitre_keywords: [analytics, pii, tracking]
+    why: PII sent to analytics may violate privacy regulations.
+    how: Anonymize or hash PII before analytics. Obtain consent for tracking.
+  PRIV_DATA_SHARE_THIRDPARTY:
+    owasp: [MASVS-NETWORK-5, MSTG-NETWORK-5]
+    mitre_keywords: [third party, sdk, data sharing]
+    why: PII sent to third-party SDKs requires disclosure and consent.
+    how: Review SDK privacy practices. Disclose in privacy policy. Get consent.
+  PRIV_PII_UNENCRYPTED:
+    owasp: [MASVS-STORAGE-4, MSTG-STORAGE-4]
+    mitre_keywords: [pii, unencrypted, storage]
+    why: PII stored without encryption is vulnerable to extraction.
+    how: Use EncryptedSharedPreferences or encrypt data before storage.
+
+  # ============================================================================
+  # Additional Storage/Logging Rules (scan_storage_logging.py v2.0)
+  # ============================================================================
+  PREFS_SENSITIVE_PLAINTEXT:
+    owasp: [MASVS-STORAGE-4, MSTG-STORAGE-4]
+    mitre_keywords: [sharedpreferences, sensitive, plaintext]
+    why: Sensitive data stored in SharedPreferences without encryption.
+    how: Use EncryptedSharedPreferences from AndroidX Security library.
+
+  # ============================================================================
+  # Additional Auth Rules (scan_auth_issues.py v2.0)
+  # ============================================================================
+  AUTH_WEAK_PASSWORD_LITERAL:
+    owasp: [MASVS-AUTH-1, MSTG-AUTH-2]
+    mitre_keywords: [password, weak, hardcoded]
+    why: Short or weak password hardcoded in source code.
+    how: Remove hardcoded passwords. Use secure password policies.
+  AUTH_PASSWORD_COMPARISON:
+    owasp: [MASVS-AUTH-1, MSTG-AUTH-2]
+    mitre_keywords: [password, comparison, client-side]
+    why: Client-side password comparison is insecure.
+    how: Validate passwords server-side only. Never compare in app.
+  AUTH_HARDCODED_USERNAME:
+    owasp: [MASVS-AUTH-1, MSTG-AUTH-1]
+    mitre_keywords: [username, hardcoded, credential]
+    why: Hardcoded username may indicate embedded credentials.
+    how: Remove hardcoded usernames. Use proper authentication flows.
+  AUTH_BIOMETRIC_WEAK:
+    owasp: [MASVS-AUTH-6, MSTG-AUTH-8]
+    mitre_keywords: [biometric, weak, authentication]
+    why: Weak biometric authentication may be bypassable.
+    how: Use BiometricPrompt with strong authentication. Require PIN fallback.
+  AUTH_TOKEN_EXPOSURE:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [token, exposure, logging]
+    why: Auth token potentially exposed in logs or insecure storage.
+    how: Never log tokens. Store in EncryptedSharedPreferences or Keystore.
+  AUTH_REMEMBER_ME:
+    owasp: [MASVS-AUTH-3, MSTG-AUTH-3]
+    mitre_keywords: [remember me, session, persistence]
+    why: Remember-me functionality may persist sessions insecurely.
+    how: Use secure token storage. Implement proper session expiration.
+  AUTH_IDOR_DIRECT:
+    owasp: [MASVS-AUTH-5, MSTG-AUTH-4]
+    mitre_keywords: [idor, direct reference, authorization]
+    why: Direct object reference pattern may indicate IDOR vulnerability.
+    how: Validate ownership server-side. Use indirect references or UUIDs.
+
+  # ============================================================================
+  # Additional Binary Protection Rules (scan_binary_protections.py v2.0)
+  # ============================================================================
+  BIN_NO_EMULATOR_DETECT:
+    owasp: [MASVS-RESILIENCE-1, MSTG-RESILIENCE-1]
+    mitre_keywords: [emulator detection, anti-analysis]
+    why: No emulator detection allows analysis in controlled environments.
+    how: Check Build properties for emulator indicators. Use multiple signals.
+
+  # ============================================================================
+  # Firebase Misconfiguration Rules (scan_firebase.py v2.1.0)
+  # ============================================================================
+  FIRE_REALTIME_DB:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase, database, exposed]
+    why: Firebase Realtime Database URL exposed. If security rules are misconfigured, data can be read/written by anyone.
+    how: Verify Firebase security rules restrict access. Test with /.json endpoint to check if public.
+  FIRE_STORAGE_BUCKET:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase storage, bucket, exposed]
+    why: Firebase Storage bucket URL exposed. Files may be publicly accessible if rules are misconfigured.
+    how: Review Firebase Storage security rules. Ensure authentication is required for access.
+  FIRE_STORAGE_GS:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase storage, gs uri]
+    why: Firebase Storage gs:// reference found. May indicate file storage usage.
+    how: Verify storage security rules. Ensure proper authentication for file access.
+  FIRE_API_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [firebase, api key, google]
+    why: Firebase/Google API key exposed. Can be abused if not properly restricted.
+    how: Restrict API key in Google Cloud Console to your app package and SHA-1.
+  FIRE_FCM_SERVER_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [fcm, server key, push notification]
+    why: FCM server key exposed. Allows sending push notifications to ANY device token. CRITICAL security issue.
+    how: Regenerate FCM key immediately. Server keys must NEVER be in client apps.
+  FIRE_CONFIG_DB_URL:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase, config, database]
+    why: Firebase database URL in google-services.json. Test for open security rules.
+    how: Append /.json to URL and test access. Configure Firebase security rules.
+  FIRE_CONFIG_STORAGE:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase, config, storage]
+    why: Firebase storage bucket in configuration. Review storage security rules.
+    how: Test storage bucket access. Ensure authentication is required.
+  FIRE_CONFIG_API_KEY:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mitre_keywords: [firebase, config, api key]
+    why: Firebase API key in google-services.json configuration file.
+    how: Restrict API key usage in Google Cloud Console.
+  FIRE_ANON_AUTH:
+    owasp: [MASVS-AUTH-2, MSTG-AUTH-1]
+    mitre_keywords: [firebase, anonymous auth]
+    why: Firebase anonymous authentication enabled. May grant unintended access.
+    how: Review if anonymous auth is needed. Ensure proper security rules for anonymous users.
+  FIRE_DB_REFERENCE:
+    owasp: [MASVS-STORAGE-1, MASVS-NETWORK-1]
+    mitre_keywords: [firebase, database reference]
+    why: Direct Firebase database reference in code. Review security rules.
+    how: Ensure Firebase security rules restrict access appropriately.
+
+  # ============================================================================
+  # Task Hijacking / StrandHogg Rules (scan_task_hijacking.py v2.1.0)
+  # ============================================================================
+  TASK_STRANDHOGG_V1:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [strandhogg, task hijacking, phishing]
+    why: Activity uses singleTask/singleInstance launchMode without empty taskAffinity. Vulnerable to StrandHogg 1.0 on Android < 11.
+    how: Set android:taskAffinity="" on application or activity. Consider targeting minSdk 30+.
+  TASK_STRANDHOGG_V1_EXPLICIT:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [strandhogg, task hijacking, explicit affinity]
+    why: Activity has explicit taskAffinity with dangerous launchMode. Highly vulnerable to StrandHogg.
+    how: Set taskAffinity="" or remove the explicit affinity. Use singleTop instead of singleTask.
+  TASK_REPARENTING:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [task reparenting, task hijacking]
+    why: allowTaskReparenting=true allows activity to move between tasks, enabling hijacking.
+    how: Remove allowTaskReparenting or set to false unless specifically required.
+  TASK_EXPORTED_DANGEROUS:
+    owasp: [MASVS-PLATFORM-2, MASVS-PLATFORM-3]
+    mitre_keywords: [exported, singleTask, hijacking]
+    why: Exported activity with singleTask/singleInstance is easier to exploit for task hijacking.
+    how: Set exported=false if not needed. Add permission protection.
+  TASK_APP_REPARENTING:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [task reparenting, application level]
+    why: Application-level task reparenting affects all activities, increasing attack surface.
+    how: Remove application-level allowTaskReparenting. Set per-activity if needed.
+  TASK_MIN_SDK_VULNERABLE:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [strandhogg, minsdk, android 11]
+    why: App supports Android versions without built-in StrandHogg protection (< API 30).
+    how: Consider raising minSdkVersion to 30+. Implement empty taskAffinity mitigation.
+  TASK_STRANDHOGG_V2_PATTERN:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [strandhogg 2.0, startActivities]
+    why: startActivities() usage detected. Can be exploited for StrandHogg 2.0 if not validated.
+    how: Validate Intent array passed to startActivities. Avoid using with untrusted input.
+  TASK_AFFINITY_MITIGATION:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-1]
+    mitre_keywords: [strandhogg, mitigation, taskAffinity]
+    why: Empty taskAffinity detected at application level - good StrandHogg mitigation.
+    how: Informational - this is the recommended mitigation for StrandHogg.
+
+  # ============================================================================
+  # Deep Link Security Rules (scan_deep_links.py v2.1.0)
+  # ============================================================================
+  DEEP_CUSTOM_SCHEME:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-2]
+    mitre_keywords: [deep link, custom scheme, phishing]
+    why: Custom URL schemes can be registered by malicious apps for phishing attacks.
+    how: Use Android App Links (HTTPS with autoVerify) instead of custom schemes.
+  DEEP_HTTP_ONLY:
+    owasp: [MASVS-NETWORK-1, MASVS-PLATFORM-1]
+    mitre_keywords: [deep link, http, interception]
+    why: HTTP-only deep links can be intercepted on the network.
+    how: Use HTTPS for deep links. Update all HTTP deep link handlers.
+  DEEP_NO_AUTO_VERIFY:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-2]
+    mitre_keywords: [deep link, autoVerify, app links, hijacking]
+    why: HTTPS deep link without autoVerify can be claimed by any app (link hijacking).
+    how: Add android:autoVerify="true" to intent-filter. Host .well-known/assetlinks.json.
+  DEEP_WILDCARD_HOST:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-2]
+    mitre_keywords: [deep link, wildcard, phishing]
+    why: Wildcard host in deep link allows phishing from any domain.
+    how: Specify exact host domains. Avoid wildcard * patterns.
+  DEEP_NO_HOST_FILTER:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-2]
+    mitre_keywords: [deep link, no host, open redirect]
+    why: Deep link without host filter catches all URLs with that scheme.
+    how: Add specific host restrictions to intent-filter data elements.
+  DEEP_WEBVIEW_INJECTION:
+    owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mitre_keywords: [deep link, webview, injection, xss]
+    why: Deep link data loaded directly in WebView enables XSS/injection attacks.
+    how: Validate and sanitize deep link URLs before loading in WebView.
+  DEEP_SQL_INJECTION:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [deep link, sql injection]
+    why: Deep link data used in SQL query enables SQL injection.
+    how: Use parameterized queries. Never concatenate deep link data into SQL.
+  DEEP_INTENT_INJECTION:
+    owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mitre_keywords: [deep link, intent injection, redirect]
+    why: Intent created from deep link data enables intent injection attacks.
+    how: Avoid Intent.parseUri with deep link data. Use explicit intents.
+  DEEP_PATH_TRAVERSAL:
+    owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mitre_keywords: [deep link, path traversal, file access]
+    why: Deep link path used in file operations enables path traversal.
+    how: Canonicalize paths. Validate against allowed directories.
+
+  # ============================================================================
+  # Tapjacking / Overlay Attack Rules (scan_tapjacking.py v2.1.0)
+  # ============================================================================
+  TAP_OVERLAY_PERMISSION:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [overlay, SYSTEM_ALERT_WINDOW]
+    why: App requests overlay permission, allowing it to draw over other apps.
+    how: Review if overlay permission is necessary. Document usage.
+  TAP_SENSITIVE_EXPORTED:
+    owasp: [MASVS-PLATFORM-2, MASVS-PLATFORM-3]
+    mitre_keywords: [tapjacking, sensitive activity, exported]
+    why: Sensitive exported activity may be targeted by tapjacking attacks.
+    how: Add filterTouchesWhenObscured and FLAG_SECURE to sensitive activities.
+  TAP_SENSITIVE_ACTIVITIES:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, sensitive, login, payment]
+    why: Potentially sensitive activities detected (login, payment, etc.).
+    how: Implement tapjacking protections for these activities.
+  TAP_FILTER_TOUCHES_ENABLED:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, filterTouchesWhenObscured, protection]
+    why: Good - filterTouchesWhenObscured protection enabled on view.
+    how: Informational - continue using this protection on sensitive views.
+  TAP_FILTER_TOUCHES_CODE:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, setFilterTouchesWhenObscured]
+    why: Good - programmatic tapjacking protection enabled.
+    how: Informational - ensure this is applied to all sensitive views.
+  TAP_FLAG_SECURE:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [FLAG_SECURE, screen capture, overlay]
+    why: Good - FLAG_SECURE protects against screen capture and overlays.
+    how: Informational - apply to all sensitive activities.
+  TAP_FILTER_DISABLED:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, disabled, vulnerable]
+    why: filterTouchesWhenObscured explicitly disabled, enabling tapjacking.
+    how: Remove setFilterTouchesWhenObscured(false) or set to true.
+  TAP_NO_PROTECTION:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, no protection]
+    why: Sensitive activities detected but no tapjacking protection found.
+    how: Add filterTouchesWhenObscured=true to views and FLAG_SECURE to activities.
+  TAP_SENSITIVE_BUTTON:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, button, sensitive]
+    why: Sensitive button (confirm, pay, etc.) without tapjacking protection.
+    how: Add filterTouchesWhenObscured="true" to the Button element.
+  TAP_PASSWORD_FIELD:
+    owasp: [MASVS-PLATFORM-2, MASVS-RESILIENCE-3]
+    mitre_keywords: [tapjacking, password, input]
+    why: Password field without tapjacking protection.
+    how: Add filterTouchesWhenObscured="true" to password EditText.
+
+  # ============================================================================
+  # Broadcast Receiver Security Rules (scan_broadcasts.py v2.1.0)
+  # ============================================================================
+  BCAST_EXPORTED_NO_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [broadcast receiver, exported, no permission]
+    why: Exported broadcast receiver without permission allows any app to send broadcasts.
+    how: Add android:permission to receiver or set exported=false.
+  BCAST_HIGH_PRIORITY:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [broadcast, priority, ordered]
+    why: High priority receiver can intercept and modify ordered broadcasts.
+    how: Review if high priority is necessary. Lower priority if possible.
+  BCAST_SENSITIVE_ACTION:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-4]
+    mitre_keywords: [broadcast, sensitive, SMS, phone]
+    why: Receiver handles sensitive system broadcasts (SMS, calls, etc.).
+    how: Ensure proper permission protection. Review data handling.
+  BCAST_STICKY_SEND:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [sticky broadcast, deprecated, insecure]
+    why: sendStickyBroadcast is deprecated and insecure - any app can read it.
+    how: Use regular broadcasts with explicit receivers instead.
+  BCAST_STICKY_ORDERED:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [sticky broadcast, ordered, intercept]
+    why: Sticky ordered broadcasts can be intercepted by any app.
+    how: Avoid sticky broadcasts entirely. Use direct communication.
+  BCAST_IMPLICIT_NO_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [broadcast, implicit, no permission]
+    why: Implicit broadcast without permission can be received by any app.
+    how: Use explicit broadcasts or add permission parameter.
+  BCAST_REGISTER_NO_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [receiver registration, no permission]
+    why: Dynamic receiver registered without permission filter.
+    how: Add permission parameter to registerReceiver call.
+  BCAST_DANGEROUS_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-4]
+    mitre_keywords: [broadcast, dangerous permission, SMS]
+    why: App can receive sensitive system broadcasts (SMS, calls, etc.).
+    how: Verify these permissions are necessary. Handle data securely.
+  BCAST_DEBUG_RECEIVER:
+    owasp: [MASVS-PLATFORM-3, MASVS-RESILIENCE-2]
+    mitre_keywords: [broadcast, debug, test, exported]
+    why: Debug/test receiver exported in production may expose functionality.
+    how: Remove debug receivers from production or set exported=false.
+  BCAST_ABORT:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [broadcast, abort, denial of service]
+    why: Aborting ordered broadcasts can cause denial of service to other receivers.
+    how: Review if abort is necessary. Consider impact on other apps.
+  BCAST_LOCAL_BROADCAST:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [local broadcast, secure]
+    why: Good - LocalBroadcastManager not vulnerable to external interception.
+    how: Informational - continue using local broadcasts for internal communication.
+
+  # ============================================================================
+  # Native Library Security Rules (scan_native_libs.py v2.1.0)
+  # ============================================================================
+  NAT_VULNERABLE_LIB:
+    owasp: [MASVS-CODE-4, MASVS-RESILIENCE-4]
+    mitre_keywords: [native library, vulnerable, cve]
+    why: Known vulnerable native library detected. May have security exploits.
+    how: Update to patched version of the library. Check CVE database.
+  NAT_NO_NX:
+    owasp: [MASVS-CODE-4, MSTG-CODE-9]
+    mitre_keywords: [native, executable stack, nx, code injection]
+    why: Native library has executable stack (no NX protection). Vulnerable to code injection.
+    how: Compile with -z noexecstack flag.
+  NAT_NO_RELRO:
+    owasp: [MASVS-CODE-4, MSTG-CODE-9]
+    mitre_keywords: [native, relro, got overwrite]
+    why: No RELRO protection. GOT/PLT sections vulnerable to overwrite attacks.
+    how: Compile with -Wl,-z,relro,-z,now for full RELRO.
+  NAT_PARTIAL_RELRO:
+    owasp: [MASVS-CODE-4, MSTG-CODE-9]
+    mitre_keywords: [native, partial relro]
+    why: Only partial RELRO enabled. GOT still partially writable.
+    how: Enable full RELRO with -Wl,-z,now flag.
+  NAT_NO_CANARY:
+    owasp: [MASVS-CODE-4, MSTG-CODE-9]
+    mitre_keywords: [native, stack canary, buffer overflow]
+    why: No stack canary protection. Vulnerable to buffer overflow exploits.
+    how: Compile with -fstack-protector-strong flag.
+  NAT_NOT_STRIPPED:
+    owasp: [MASVS-CODE-4, MASVS-RESILIENCE-3]
+    mitre_keywords: [native, debug symbols, reverse engineering]
+    why: Debug symbols present in native library. Easier to reverse engineer.
+    how: "Strip symbols with: strip --strip-all library.so"
+  NAT_DEBUG_LIB:
+    owasp: [MASVS-CODE-4, MASVS-RESILIENCE-2]
+    mitre_keywords: [native, debug library, production]
+    why: Debug library included in release build.
+    how: Remove debug libraries from production builds.
+  NAT_32BIT_ONLY:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [native, 32bit, arm64]
+    why: Only 32-bit native libraries. Missing 64-bit support (required by Play Store).
+    how: Add arm64-v8a and x86_64 libraries for 64-bit device support.
+  NAT_LOAD_LIBRARY:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [native, System.loadLibrary]
+    why: Native library loading detected via System.loadLibrary.
+    how: Informational - review loaded library for security.
+  NAT_LOAD_PATH:
+    owasp: [MASVS-CODE-4, MASVS-PLATFORM-5]
+    mitre_keywords: [native, System.load, path injection]
+    why: Loading native library by full path. Potential path injection if dynamic.
+    how: Use System.loadLibrary instead. Validate paths if dynamic loading needed.
+  NAT_RUNTIME_EXEC:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [native, runtime exec, command injection]
+    why: Native code calling Runtime.exec. Potential command injection.
+    how: Avoid exec with user input. Use ProcessBuilder with validation.
+  NAT_FRIDA:
+    owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mitre_keywords: [frida, instrumentation, hook]
+    why: Frida library detected. Dynamic instrumentation framework.
+    how: Informational - may indicate development/testing or analysis capability.
+  NAT_XPOSED:
+    owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mitre_keywords: [xposed, hook, modification]
+    why: Xposed framework library detected. Runtime modification capability.
+    how: Informational - consider anti-hook measures for sensitive apps.
+
+  # ============================================================================
+  # Dynamic Code Loading Rules (scan_dynamic_loading.py v2.1.0)
+  # ============================================================================
+  DYN_DEX_CLASSLOADER:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [dexclassloader, dynamic code, code injection]
+    why: DexClassLoader can load arbitrary DEX code at runtime. High risk of code injection.
+    how: Verify integrity of loaded DEX files. Use signature verification.
+  DYN_PATH_CLASSLOADER:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [pathclassloader, dynamic code]
+    why: PathClassLoader usage detected. Review source of loaded classes.
+    how: Ensure class loading source is trusted and verified.
+  DYN_INMEMORY_CLASSLOADER:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [in-memory dex, dynamic code]
+    why: InMemoryDexClassLoader loads DEX directly from memory. Review data source.
+    how: Verify integrity and source of DEX bytes before loading.
+  DYN_EXTERNAL_STORAGE_LOAD:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [external storage, code loading, malicious code]
+    why: CRITICAL - Code loaded from external storage. Any app can modify these files.
+    how: NEVER load code from external storage. Use internal storage with integrity checks.
+  DYN_DOWNLOAD_DEX:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [download dex, remote code execution]
+    why: CRITICAL - Pattern suggests downloading DEX files. Remote code execution risk.
+    how: If dynamic updates needed, use Google Play's in-app updates API instead.
+  DYN_CLASS_FORNAME:
+    owasp: [MASVS-CODE-3]
+    mitre_keywords: [reflection, Class.forName, dynamic class]
+    why: Dynamic class loading via Class.forName. Potential for class injection if name is dynamic.
+    how: Validate class names against whitelist. Avoid user-controlled class names.
+  DYN_DEFINE_CLASS:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [defineClass, raw bytes, code injection]
+    why: Defining class from raw bytes. High risk of code injection.
+    how: Verify integrity of byte arrays. Use signature verification.
+  DYN_SCRIPT_ENGINE:
+    owasp: [MASVS-CODE-3, MASVS-PLATFORM-5]
+    mitre_keywords: [script engine, eval, code injection]
+    why: Script evaluation engine detected. Potential code injection vector.
+    how: Avoid eval with untrusted input. Sandbox script execution.
+  DYN_RHINO:
+    owasp: [MASVS-CODE-3, MASVS-PLATFORM-5]
+    mitre_keywords: [rhino, javascript, code execution]
+    why: Rhino JavaScript engine detected. Review script sources.
+    how: Validate and sanitize JavaScript before execution.
+  DYN_NO_VERIFICATION:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [dexclassloader, no verification, integrity]
+    why: DexClassLoader usage without apparent signature/hash verification.
+    how: Implement code signing. Verify hash before loading any dynamic code.
+  DYN_CRITICAL_EXTERNAL:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [external storage, world writable, malicious]
+    why: CRITICAL - Code loaded from world-writable location. Trivial to exploit.
+    how: Remove external storage code loading entirely. Use signed internal resources.
+  DYN_CRITICAL_DOWNLOAD:
+    owasp: [MASVS-CODE-3, MASVS-CODE-4]
+    mitre_keywords: [download code, remote execution]
+    why: CRITICAL - Remote code loading enables remote code execution attacks.
+    how: Use Play Store updates. If needed, implement strong code signing.
+
+  # ============================================================================
+  # Zip Slip / Path Traversal Rules (scan_zip_slip.py v2.2.0)
+  # ============================================================================
+  ZIP_ZIPENTRY_NO_VALIDATE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [zip slip, path traversal, zip extraction]
+    why: ZipEntry.getName() used without path validation. Vulnerable to Zip Slip attack (CVE-2018-1000001).
+    how: Validate extracted path with getCanonicalPath(). Ensure path starts with target directory.
+  ZIP_ZIPINPUTSTREAM:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [zip slip, ZipInputStream, extraction]
+    why: ZipInputStream extraction without validation enables path traversal.
+    how: Always validate ZipEntry paths before extraction. Use path canonicalization.
+  ZIP_JARENTRY:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [jar, path traversal, extraction]
+    why: JarEntry extraction without validation. Same risk as ZipEntry.
+    how: Apply same path validation as ZipEntry. Check canonical path.
+  ZIP_TARENTRY:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [tar, path traversal, extraction]
+    why: TAR archive extraction without validation. Path traversal risk.
+    how: Validate TarArchiveEntry names before extraction.
+  ZIP_EXTERNAL_PATH:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [zip slip, external storage, path traversal]
+    why: CRITICAL - ZIP extraction to external storage with dynamic path. High exploitation risk.
+    how: Extract to internal storage only. Validate all paths.
+  ZIP_SMALI_GETNAME:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [zip slip, smali, getName]
+    why: ZipEntry.getName() in smali - review for path validation.
+    how: Ensure path validation exists in the extraction code path.
+  ZIP_GOOD_CANONICAL:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [zip slip, protection, canonical]
+    why: Good - getCanonicalPath() used for path validation.
+    how: Informational - continue using path canonicalization.
+  ZIP_GOOD_STARTSWITH:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [zip slip, protection, validation]
+    why: Good - startsWith() check for directory restriction.
+    how: Informational - ensure this is combined with canonicalization.
+
+  # ============================================================================
+  # Unsafe Deserialization Rules (scan_serialization.py v2.2.0)
+  # ============================================================================
+  SER_READ_OBJECT:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, ObjectInputStream, RCE]
+    why: ObjectInputStream.readObject() can execute arbitrary code via gadget chains.
+    how: Avoid Java serialization. Use JSON/Protocol Buffers. If needed, implement whitelist ObjectInputFilter.
+  SER_READ_UNSHARED:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, readUnshared, RCE]
+    why: readUnshared has same deserialization risks as readObject.
+    how: Apply same mitigations as readObject.
+  SER_OIS_FROM_NETWORK:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, network, RCE]
+    why: CRITICAL - Deserializing from network source. Remote code execution risk.
+    how: NEVER deserialize untrusted data. Use JSON or authenticated formats.
+  SER_OIS_CREATE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, ObjectInputStream]
+    why: ObjectInputStream creation - review data source for trust.
+    how: Verify input source is trusted. Consider safer serialization formats.
+  SER_WRITE_OBJECT:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [serialization, ObjectOutputStream]
+    why: Serialization usage - indicates potential deserialization elsewhere.
+    how: Informational - review corresponding deserialization code.
+  SER_CUSTOM_READOBJECT:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, custom readObject, gadget]
+    why: Custom readObject method may contain exploitable code.
+    how: Review custom deserialization logic for command execution paths.
+  SER_READ_RESOLVE:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deserialization, readResolve]
+    why: Custom readResolve method - review for security implications.
+    how: Ensure readResolve doesn't create security-sensitive objects.
+  SER_INTENT_PARCELABLE:
+    owasp: [MASVS-CODE-4, MASVS-PLATFORM-1]
+    mitre_keywords: [parcelable, intent, deserialization]
+    why: Parcelable from Intent may come from untrusted source.
+    how: Validate parcelable content before use. Don't trust external data.
+  SER_BUNDLE_PARCELABLE:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [parcelable, bundle]
+    why: Parcelable extraction from Bundle - verify data source.
+    how: Informational - ensure Bundle comes from trusted source.
+  SER_PARCEL_READVALUE:
+    owasp: [MASVS-CODE-4, MASVS-PLATFORM-1]
+    mitre_keywords: [parcel, readValue, deserialization]
+    why: readValue can deserialize arbitrary Parcelables.
+    how: Validate class types after deserialization.
+  SER_PARCEL_DIRECT:
+    owasp: [MASVS-CODE-4, MASVS-PLATFORM-1]
+    mitre_keywords: [parcel, deserialization]
+    why: Direct Parcel deserialization - verify data source.
+    how: Ensure Parcel data comes from trusted source.
+  SER_CREATE_FROM_PARCEL:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [parcelable, CREATOR]
+    why: Parcelable CREATOR pattern - data should be trusted.
+    how: Informational - ensure data source is validated.
+  SER_GSON_TYPETOKEN:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [gson, deserialization, typetoken]
+    why: Gson TypeToken deserialization of complex types.
+    how: Review type safety. Validate data source.
+  SER_JACKSON_READ:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [jackson, deserialization, polymorphic]
+    why: Jackson ObjectMapper deserialization - check polymorphic type handling.
+    how: Disable default typing. Use explicit type declarations.
+  SER_JACKSON_DEFAULT_TYPING:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [jackson, default typing, RCE]
+    why: CRITICAL - Jackson default typing enables polymorphic deserialization. RCE risk.
+    how: Remove enableDefaultTyping. Use @JsonTypeInfo with explicit allowed types.
+  SER_JACKSON_PARSER:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [jackson, parser, deserialization]
+    why: Jackson parser deserialization - review type restrictions.
+    how: Ensure target types are explicitly defined.
+  SER_XML_DECODER:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [XMLDecoder, deserialization, RCE]
+    why: CRITICAL - XMLDecoder is inherently insecure. Arbitrary code execution possible.
+    how: NEVER use XMLDecoder with untrusted data. Remove entirely.
+  SER_XSTREAM:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xstream, deserialization, RCE]
+    why: XStream deserialization can be exploited without proper security configuration.
+    how: Use XStream security framework. Explicitly allow only required types.
+  SER_JAXB_UNMARSHAL:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [jaxb, deserialization, xml]
+    why: JAXB unmarshalling - generally safer but review for XXE.
+    how: Ensure XML parser has XXE protections enabled.
+  SER_NO_SERIAL_UID:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [serialization, serialVersionUID]
+    why: Missing serialVersionUID may cause deserialization compatibility issues.
+    how: Add serialVersionUID to Serializable classes.
+  SER_EXTERNALIZABLE:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [externalizable, deserialization]
+    why: Externalizable requires manual serialization - review readExternal().
+    how: Validate data in readExternal implementation.
+  SER_SMALI_READOBJECT:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [deserialization, smali, readObject]
+    why: Java deserialization detected in smali code.
+    how: Review bytecode for data source validation.
+  SER_SMALI_PARCEL:
+    owasp: [MASVS-CODE-4, MASVS-PLATFORM-1]
+    mitre_keywords: [parcelable, smali, deserialization]
+    why: Parcelable deserialization in smali.
+    how: Verify data source is trusted.
+
+  # ============================================================================
+  # Fragment Injection Rules (scan_fragment_injection.py v2.2.0)
+  # ============================================================================
+  FRAG_PREF_ACTIVITY_VULNERABLE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, PreferenceActivity, CVE-2014-8609]
+    why: PreferenceActivity without isValidFragment() override. Vulnerable to fragment injection (CVE-2014-8609).
+    how: Override isValidFragment() and validate fragment class against whitelist.
+  FRAG_ISVALID_ALWAYS_TRUE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, isValidFragment, bypass]
+    why: isValidFragment() returns true for all fragments - no protection.
+    how: Validate fragment class name against explicit whitelist.
+  FRAG_INSTANTIATE_INTENT:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, Fragment.instantiate, intent]
+    why: Fragment class from Intent can be controlled by attacker.
+    how: Validate fragment class before instantiation. Use whitelist.
+  FRAG_INTENT_FRAGMENT_EXTRA:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, intent extra]
+    why: Fragment name from Intent extra - validate against allowed list.
+    how: Whitelist allowed fragment classes.
+  FRAG_CLASS_FORNAME:
+    owasp: [MASVS-PLATFORM-1, MASVS-CODE-3]
+    mitre_keywords: [fragment injection, reflection, Class.forName]
+    why: Dynamic fragment loading via reflection. Validate class name.
+    how: Use explicit fragment class whitelist.
+  FRAG_INSTANTIATE_VARIABLE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, variable]
+    why: Fragment.instantiate with variable - review source.
+    how: Validate fragment class name variable.
+  FRAG_FIND_BY_INTENT:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, findFragmentByTag]
+    why: Fragment tag from Intent - review validation.
+    how: Validate fragment tags from external sources.
+  FRAG_APPCOMPAT_PREF:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, AppCompatPreferenceActivity]
+    why: AppCompatPreferenceActivity also vulnerable to fragment injection.
+    how: Override isValidFragment() with proper validation.
+  FRAG_ISVALID_PROPER:
+    owasp: [MASVS-PLATFORM-1]
+    mitre_keywords: [fragment injection, protection]
+    why: Good - isValidFragment validates against specific classes.
+    how: Informational - continue using explicit validation.
+  FRAG_EXPORTED_PREFERENCE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, exported, preference]
+    why: Exported preference-like activity may be vulnerable to fragment injection.
+    how: Ensure isValidFragment() is properly implemented.
+  FRAG_SMALI_PREF_ACTIVITY:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, smali, PreferenceActivity]
+    why: PreferenceActivity in smali - check for isValidFragment override.
+    how: Review smali for isValidFragment implementation.
+  FRAG_SMALI_INSTANTIATE:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, smali, instantiate]
+    why: Fragment.instantiate in smali - review class name source.
+    how: Validate class names before instantiation.
+  FRAG_NO_VALIDATION:
+    owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-3]
+    mitre_keywords: [fragment injection, no validation]
+    why: PreferenceActivity without isValidFragment override found.
+    how: Override isValidFragment() and validate fragment class names.
+
+  # ============================================================================
+  # XXE Injection Rules (scan_xxe.py v2.2.0)
+  # ============================================================================
+  XXE_SAX_NO_FEATURE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, SAXParser, external entities]
+    why: SAXParserFactory without security features. Vulnerable to XXE.
+    how: "Add: factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)"
+  XXE_DOM_NO_FEATURE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, DocumentBuilder, external entities]
+    why: DocumentBuilderFactory without security features. XXE vulnerable.
+    how: "Disable DTDs and external entities: factory.setFeature('http://apache.org/xml/features/disallow-doctype-decl', true)"
+  XXE_STAX_NO_PROPERTY:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, XMLInputFactory, stax]
+    why: XMLInputFactory without security properties. XXE vulnerable.
+    how: "Set: factory.setProperty(XMLInputFactory.SUPPORT_DTD, false)"
+  XXE_XMLREADER_NO_FEATURE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, XMLReader, external entities]
+    why: XMLReader without security features. XXE vulnerable.
+    how: Disable external-general-entities and external-parameter-entities.
+  XXE_XPATH_FACTORY:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, XPath, injection]
+    why: XPath with untrusted input can enable XXE via XML source.
+    how: Ensure XML source has XXE protections.
+  XXE_TRANSFORMER_NO_FEATURE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, TransformerFactory, external entities]
+    why: TransformerFactory without security features. XXE vulnerable.
+    how: Set FEATURE_SECURE_PROCESSING to true.
+  XXE_SCHEMA_NO_FEATURE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, SchemaFactory, external entities]
+    why: SchemaFactory without security features. XXE vulnerable.
+    how: Disable external entities in SchemaFactory.
+  XXE_JAXB_UNMARSHALLER:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, JAXB, unmarshaller]
+    why: JAXB unmarshalling can be vulnerable to XXE.
+    how: Use SAXSource with secure SAXParser for unmarshalling.
+  XXE_PULLPARSER_DOCTYPE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, XmlPullParser, DOCTYPE]
+    why: DOCTYPE processing enabled in XmlPullParser. XXE risk.
+    how: Disable PROCESS_DOCDECL feature.
+  XXE_SECURE_FEATURE:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [xxe, protection, secure processing]
+    why: Good - Secure processing feature enabled.
+    how: Informational - continue using secure configuration.
+  XXE_EXTERNAL_DISABLED:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [xxe, protection, external disabled]
+    why: Good - External entities are disabled.
+    how: Informational - proper XXE protection.
+  XXE_DTD_DISABLED:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [xxe, protection, DTD disabled]
+    why: Good - External DTD loading is disabled.
+    how: Informational - proper XXE protection.
+  XXE_VALIDATOR_SOURCE:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, validator, external source]
+    why: Validation with external source - ensure XXE protection.
+    how: Use secure parser configuration for validation.
+  XXE_EXTERNAL_ENABLED:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, critical, external enabled]
+    why: CRITICAL - External entities explicitly enabled. High XXE risk.
+    how: Set external entity features to false immediately.
+  XXE_DTD_ENABLED:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, critical, DTD enabled]
+    why: CRITICAL - External DTD loading enabled. XXE and SSRF risk.
+    how: Disable DTD loading.
+  XXE_EXPAND_ENTITIES:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, entity expansion, DoS]
+    why: Entity expansion enabled - denial of service risk (billion laughs).
+    how: Set setExpandEntityReferences(false).
+  XXE_XML_TO_URL:
+    owasp: [MASVS-CODE-4, MASVS-NETWORK-1]
+    mitre_keywords: [xxe, SSRF, URL]
+    why: XML content flows to network operation - potential SSRF.
+    how: Validate and sanitize XML content before network use.
+  XXE_XML_TO_FILE:
+    owasp: [MASVS-CODE-4, MASVS-STORAGE-6]
+    mitre_keywords: [xxe, file disclosure, path]
+    why: XML content flows to file operation - potential file disclosure.
+    how: Validate and sanitize XML content before file operations.
+  XXE_SMALI_SAX:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, smali, SAXParser]
+    why: SAXParserFactory in smali - review for XXE protection.
+    how: Verify secure features are set.
+  XXE_SMALI_DOM:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, smali, DocumentBuilder]
+    why: DocumentBuilderFactory in smali - review for XXE protection.
+    how: Verify secure features are set.
+  XXE_NO_PROTECTION:
+    owasp: [MASVS-CODE-4, MSTG-CODE-4]
+    mitre_keywords: [xxe, no protection]
+    why: XML parsers without XXE protection found.
+    how: Add FEATURE_SECURE_PROCESSING and disable external entities.
+
+  # ============================================================================
+  # Implicit Intent Leakage Rules (scan_implicit_intents.py v2.2.0)
+  # ============================================================================
+  IMPL_BROADCAST_NO_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, broadcast, interception]
+    why: sendBroadcast without permission - any app can receive.
+    how: Use sendBroadcast(intent, permission) or LocalBroadcastManager.
+  IMPL_ORDERED_NO_PERM:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, ordered broadcast, intercept]
+    why: Ordered broadcast with null permission - can be intercepted.
+    how: Add permission parameter to sendOrderedBroadcast.
+  IMPL_INTENT_ACTION_ONLY:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, action only, interception]
+    why: Intent with action only may be intercepted by other apps.
+    how: Use explicit component with setClass/setComponent.
+  IMPL_START_ACTIVITY_IMPLICIT:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, startActivity, interception]
+    why: startActivity with implicit intent - verify target app.
+    how: Use explicit intents for internal activities.
+  IMPL_START_SERVICE_IMPLICIT:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, service, insecure]
+    why: Implicit service start is insecure - use explicit intents.
+    how: Use explicit Intent with setComponent/setClass.
+  IMPL_BIND_SERVICE_IMPLICIT:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, bindService, insecure]
+    why: Implicit service binding is insecure.
+    how: Use explicit Intent with target component.
+  IMPL_SETACTION_NO_PACKAGE:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, setAction, package]
+    why: Intent action set without package restriction.
+    how: Add setPackage() to restrict recipient.
+  IMPL_SENSITIVE_BROADCAST:
+    owasp: [MASVS-PLATFORM-1, MASVS-STORAGE-2]
+    mitre_keywords: [implicit intent, sensitive data, broadcast]
+    why: CRITICAL - Sensitive data sent via broadcast. Can be intercepted.
+    how: Use LocalBroadcastManager or add permission protection.
+  IMPL_SENSITIVE_EXTRA:
+    owasp: [MASVS-PLATFORM-1, MASVS-STORAGE-2]
+    mitre_keywords: [implicit intent, sensitive data, extra]
+    why: Sensitive data in intent extra - verify recipient.
+    how: Use explicit intents for sensitive data.
+  IMPL_EXPLICIT_INTENT:
+    owasp: [MASVS-PLATFORM-1]
+    mitre_keywords: [explicit intent, secure]
+    why: Good - Explicit intent with target class.
+    how: Informational - continue using explicit intents.
+  IMPL_SET_PACKAGE:
+    owasp: [MASVS-PLATFORM-1]
+    mitre_keywords: [intent, setPackage, protection]
+    why: Good - Intent package explicitly set.
+    how: Informational - proper package restriction.
+  IMPL_LOCAL_BROADCAST:
+    owasp: [MASVS-PLATFORM-1]
+    mitre_keywords: [local broadcast, secure]
+    why: Good - LocalBroadcastManager is secure for internal broadcasts.
+    how: Informational - note that LocalBroadcastManager is deprecated.
+  IMPL_CHOOSER_SENSITIVE:
+    owasp: [MASVS-PLATFORM-1, MASVS-STORAGE-2]
+    mitre_keywords: [intent chooser, sensitive data]
+    why: Chooser may expose data to multiple apps - user chooses target.
+    how: Review if sensitive data needs to be shared.
+  IMPL_CHOOSER:
+    owasp: [MASVS-PLATFORM-1]
+    mitre_keywords: [intent chooser, user choice]
+    why: Intent chooser presents multiple app options to user.
+    how: Informational - user controls target app.
+  IMPL_SMALI_BROADCAST:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, smali, broadcast]
+    why: sendBroadcast in smali - verify permission requirement.
+    how: Add permission parameter or use explicit receiver.
+  IMPL_SMALI_START_SERVICE:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [implicit intent, smali, service]
+    why: Service start in smali - verify explicit intent usage.
+    how: Use explicit component in service Intent.
+
+  # ============================================================================
+  # Clipboard Data Exposure Rules (scan_clipboard.py v2.2.0)
+  # ============================================================================
+  CLIP_SET_PASSWORD:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, password, exposure]
+    why: Password data copied to clipboard - accessible by other apps.
+    how: Avoid clipboard for passwords. Use password managers.
+  CLIP_SET_TOKEN:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, token, exposure]
+    why: Auth token in clipboard - can be stolen by malicious apps.
+    how: Never copy tokens to clipboard.
+  CLIP_SET_KEY:
+    owasp: [MASVS-STORAGE-2, MASVS-CRYPTO-3]
+    mitre_keywords: [clipboard, api key, exposure]
+    why: API key copied to clipboard - security risk.
+    how: Avoid clipboard for sensitive keys.
+  CLIP_SET_SECRET:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, secret, exposure]
+    why: Secret data in clipboard - exposure risk.
+    how: Don't use clipboard for sensitive data.
+  CLIP_SET_CREDIT:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, credit card, PCI]
+    why: CRITICAL - Credit card data in clipboard. PCI-DSS violation.
+    how: Never copy payment data to clipboard.
+  CLIP_SET_SSN:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, ssn, pii]
+    why: CRITICAL - SSN in clipboard. Major privacy violation.
+    how: Never copy SSN to clipboard.
+  CLIP_SET_PRIMARY:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, setPrimaryClip]
+    why: Clipboard write detected - review for sensitive data.
+    how: Avoid clipboard for sensitive information.
+  CLIP_GET_DATA:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [clipboard, getData, read]
+    why: Clipboard read - may access data from other apps.
+    how: Review what is done with clipboard data.
+  CLIP_NO_SENSITIVE_FLAG:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, sensitive flag, Android 13]
+    why: Sensitive data without EXTRA_IS_SENSITIVE flag (Android 13+).
+    how: Add ClipDescription.EXTRA_IS_SENSITIVE for sensitive clips.
+  CLIP_SENSITIVE_FLAG_SET:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [clipboard, sensitive, protection]
+    why: Good - EXTRA_IS_SENSITIVE flag set for sensitive clipboard.
+    how: Informational - proper Android 13+ handling.
+  CLIP_SMALI_SET:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [clipboard, smali, setPrimaryClip]
+    why: Clipboard write in smali - review for sensitive data.
+    how: Verify no sensitive data is copied.
+  CLIP_SMALI_GET:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [clipboard, smali, getPrimaryClip]
+    why: Clipboard read in smali - review data usage.
+    how: Validate clipboard data handling.
+
+  # ============================================================================
+  # Keyboard Cache Rules (scan_keyboard_cache.py v2.2.0)
+  # ============================================================================
+  KEY_PASSWORD_NO_FLAGS:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [keyboard cache, password, autocomplete]
+    why: Password field without textNoSuggestions - keyboard may cache.
+    how: Add inputType="textNoSuggestions|textPassword".
+  KEY_SENSITIVE_NO_FLAGS:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [keyboard cache, sensitive, autocomplete]
+    why: Sensitive EditText without keyboard cache protection.
+    how: Add textNoSuggestions flag to inputType.
+  KEY_AUTOCOMPLETE_ENABLED:
+    owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mitre_keywords: [keyboard cache, autocomplete, enabled]
+    why: Autocomplete enabled on sensitive field - may cache data.
+    how: Disable autocomplete on sensitive inputs.
+  KEY_NO_SUGGESTIONS:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [keyboard cache, protection, noSuggestions]
+    why: Good - textNoSuggestions disables keyboard caching.
+    how: Informational - proper input protection.
+  KEY_VISIBLE_PASSWORD:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [keyboard cache, visible password]
+    why: Good - textVisiblePassword typically disables suggestions.
+    how: Informational - proper password field handling.
+  KEY_CODE_NO_SUGGESTIONS:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [keyboard cache, code, noSuggestions]
+    why: Good - TYPE_TEXT_FLAG_NO_SUGGESTIONS set in code.
+    how: Informational - proper input handling.
+  KEY_SMALI_SETINPUTTYPE:
+    owasp: [MASVS-STORAGE-2]
+    mitre_keywords: [keyboard cache, smali, inputType]
+    why: InputType set in smali - review for proper flags.
+    how: Verify noSuggestions flag is included.
+
+  # ============================================================================
+  # Insecure Random Rules (scan_random.py v2.2.0)
+  # ============================================================================
+  RAND_JAVA_UTIL_RANDOM:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, weak PRNG, predictable]
+    why: java.util.Random is not cryptographically secure. Predictable.
+    how: Use SecureRandom for security-sensitive randomness.
+  RAND_NEW_RANDOM:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, weak, new Random]
+    why: new Random() is predictable - not suitable for security.
+    how: Replace with new SecureRandom().
+  RAND_RANDOM_INT:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, nextInt, predictable]
+    why: Random.nextInt() is predictable if from java.util.Random.
+    how: Use SecureRandom for security-critical values.
+  RAND_RANDOM_BYTES:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, nextBytes, predictable]
+    why: Random.nextBytes() may be from weak PRNG.
+    how: Verify SecureRandom is used for cryptographic bytes.
+  RAND_MATH_RANDOM:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, Math.random, predictable]
+    why: Math.random() uses java.util.Random internally. Not secure.
+    how: Use SecureRandom for security purposes.
+  RAND_TIME_SEED:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, time seed, predictable]
+    why: CRITICAL - Seeding with time is predictable. Easily guessable.
+    how: Remove seed entirely or use SecureRandom (auto-seeds securely).
+  RAND_CONSTANT_SEED:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, constant seed, predictable]
+    why: CRITICAL - Constant seed produces predictable sequence.
+    how: Remove seed. Use SecureRandom which seeds securely.
+  RAND_SECURITY_USE:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, security, token]
+    why: Random used for security purpose - verify SecureRandom.
+    how: Ensure SecureRandom is used for tokens/keys/IVs.
+  RAND_KOTLIN_RANDOM:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, kotlin, predictable]
+    why: Kotlin Random is based on java.util.Random. Not secure.
+    how: Use SecureRandom explicitly for security needs.
+  RAND_SHUFFLE:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, shuffle, predictable]
+    why: Random shuffle may be predictable if using weak PRNG.
+    how: Use SecureRandom for security-critical shuffling.
+  RAND_SECURE_RANDOM:
+    owasp: [MASVS-CRYPTO-1]
+    mitre_keywords: [random, SecureRandom, secure]
+    why: Good - SecureRandom is cryptographically secure.
+    how: Informational - proper PRNG usage.
+  RAND_SMALI_RANDOM:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, smali, predictable]
+    why: java.util.Random in smali - not cryptographically secure.
+    how: Replace with SecureRandom.
+  RAND_SMALI_MATH:
+    owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-6]
+    mitre_keywords: [random, smali, Math.random]
+    why: Math.random in smali - uses weak PRNG.
+    how: Use SecureRandom for security needs.
+
+  # ============================================================================
+  # APK Signature Rules (scan_apk_signature.py v2.2.0)
+  # ============================================================================
+  SIG_V1_ONLY:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-1]
+    mitre_keywords: [apk signature, v1 only, Janus]
+    why: V1 signature only is vulnerable to Janus vulnerability (CVE-2017-13156).
+    how: Enable APK signature scheme v2 or v3 in build.gradle.
+  SIG_DEBUG_CERT:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-1]
+    mitre_keywords: [apk signature, debug certificate, production]
+    why: DEBUG CERTIFICATE in production APK. Anyone can sign updates.
+    how: Sign with proper release keystore. Never ship debug builds.
+  SIG_WEAK_SHA1:
+    owasp: [MASVS-RESILIENCE-3, MASVS-CRYPTO-5]
+    mitre_keywords: [apk signature, SHA1, weak]
+    why: SHA-1 signature algorithm is deprecated.
+    how: Use SHA-256 or stronger for signing.
+  SIG_WEAK_MD5:
+    owasp: [MASVS-RESILIENCE-3, MASVS-CRYPTO-5]
+    mitre_keywords: [apk signature, MD5, weak]
+    why: MD5 signature algorithm is broken.
+    how: Use SHA-256 or stronger for signing.
+  SIG_RSA_1024:
+    owasp: [MASVS-RESILIENCE-3, MASVS-CRYPTO-2]
+    mitre_keywords: [apk signature, RSA 1024, weak key]
+    why: RSA 1024-bit key is too weak. Potentially factorizable.
+    how: Use RSA 2048-bit or stronger key.
+  SIG_RSA_2048:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, RSA 2048]
+    why: RSA 2048-bit key is acceptable but consider upgrading.
+    how: Informational - consider RSA 4096 for long-term security.
+  SIG_RSA_STRONG:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, RSA strong]
+    why: Good - RSA 4096+ bit key provides strong security.
+    how: Informational - excellent key strength.
+  SIG_EC_STRONG:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, EC, strong]
+    why: Good - EC key provides strong security with smaller size.
+    how: Informational - excellent signature algorithm choice.
+  SIG_V2_ENABLED:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, v2, secure]
+    why: Good - APK Signature Scheme v2 protects entire APK.
+    how: Informational - proper signature scheme.
+  SIG_V3_ENABLED:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, v3, key rotation]
+    why: Good - APK Signature Scheme v3 supports key rotation.
+    how: Informational - latest signature scheme.
+  SIG_EXPIRED:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-1]
+    mitre_keywords: [apk signature, expired certificate]
+    why: Signing certificate has expired. Updates may fail.
+    how: Re-sign with valid certificate before expiration.
+  SIG_NOT_YET_VALID:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-1]
+    mitre_keywords: [apk signature, future certificate]
+    why: Signing certificate not yet valid. Installation may fail.
+    how: Check certificate validity dates.
+  SIG_SELF_SIGNED:
+    owasp: [MASVS-RESILIENCE-3]
+    mitre_keywords: [apk signature, self-signed]
+    why: Self-signed certificate is normal for Android apps.
+    how: Informational - this is expected for Android signing.
+  SIG_NO_CERTIFICATE:
+    owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-1]
+    mitre_keywords: [apk signature, unsigned]
+    why: No certificate found - APK may be unsigned.
+    how: Ensure APK is properly signed for distribution.
+
+  # ============================================================================
+  # Deprecated API Rules (scan_deprecated_apis.py v2.2.0)
+  # ============================================================================
+  DEP_DES_CIPHER:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [deprecated, DES, crypto]
+    why: DES is cryptographically broken - 56-bit key is trivially brute-forced.
+    how: Migrate to AES-256 or AES-128.
+  DEP_MD5_HASH:
+    owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mitre_keywords: [deprecated, MD5, hash]
+    why: MD5 has known collisions - not suitable for security.
+    how: Use SHA-256 or stronger.
+  DEP_SHA1_HASH:
+    owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mitre_keywords: [deprecated, SHA1, hash]
+    why: SHA-1 is deprecated due to practical collision attacks.
+    how: Upgrade to SHA-256 or SHA-3.
+  DEP_RC4_CIPHER:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [deprecated, RC4, crypto]
+    why: RC4 is cryptographically broken.
+    how: Use AES-GCM instead.
+  DEP_BLOWFISH:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [deprecated, Blowfish, crypto]
+    why: Blowfish is deprecated - 64-bit block size is vulnerable.
+    how: Use AES instead.
+  DEP_HTTP_CLIENT:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, HttpClient, Apache]
+    why: Apache HttpClient removed in API 23.
+    how: Use HttpURLConnection or OkHttp.
+  DEP_APACHE_HTTP:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, Apache HTTP, removed]
+    why: Apache HTTP library removed from SDK.
+    how: Migrate to modern networking (OkHttp, Retrofit).
+  DEP_SSL_SOCKET_FACTORY:
+    owasp: [MASVS-NETWORK-4, MSTG-NETWORK-3]
+    mitre_keywords: [deprecated, SSLCertificateSocketFactory, insecure]
+    why: SSLCertificateSocketFactory can bypass certificate validation.
+    how: Use SSLSocketFactory from SSLContext.
+  DEP_WORLD_ACCESSIBLE:
+    owasp: [MASVS-STORAGE-1, MSTG-STORAGE-1]
+    mitre_keywords: [deprecated, MODE_WORLD_READABLE, insecure]
+    why: MODE_WORLD_READABLE/WRITEABLE removed in API 24. Insecure.
+    how: Use MODE_PRIVATE. Share via ContentProvider.
+  DEP_EXTERNAL_STORAGE:
+    owasp: [MASVS-STORAGE-5, MSTG-STORAGE-5]
+    mitre_keywords: [deprecated, getExternalStorageDirectory, scoped storage]
+    why: getExternalStorageDirectory deprecated in API 29.
+    how: Use getExternalFilesDir or MediaStore APIs.
+  DEP_PUBLIC_STORAGE:
+    owasp: [MASVS-STORAGE-5, MSTG-STORAGE-5]
+    mitre_keywords: [deprecated, getExternalStoragePublicDirectory, scoped storage]
+    why: getExternalStoragePublicDirectory deprecated in API 29.
+    how: Use MediaStore APIs for shared files.
+  DEP_IMPLICIT_SERVICE:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [deprecated, implicit service, API 21]
+    why: Implicit service intents illegal since API 21.
+    how: Use explicit intents for services.
+  DEP_RUNNING_TASKS:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, getRunningTasks, privacy]
+    why: getRunningTasks deprecated for privacy - returns only own tasks.
+    how: Use UsageStatsManager with permission.
+  DEP_GET_DEVICE_ID:
+    owasp: [MASVS-CODE-4, MASVS-STORAGE-3]
+    mitre_keywords: [deprecated, getDeviceId, IMEI]
+    why: getDeviceId deprecated in API 26, removed in 29.
+    how: Use instance-specific IDs or Advertising ID.
+  DEP_ANDROID_ID:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, ANDROID_ID, identifier]
+    why: ANDROID_ID behavior changed in API 26.
+    how: Review identifier strategy for your use case.
+  DEP_WEBVIEW_SUPPRESSED:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, WebView, suppressed]
+    why: Suppressed WebView deprecation warnings - review.
+    how: Address deprecated WebView method usage.
+  DEP_JS_ENABLED:
+    owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mitre_keywords: [WebView, JavaScript, security]
+    why: JavaScript in WebView - ensure proper security settings.
+    how: Disable if not needed. Add CSP if enabled.
+  DEP_STICKY_BROADCAST:
+    owasp: [MASVS-PLATFORM-1, MASVS-PLATFORM-3]
+    mitre_keywords: [deprecated, sticky broadcast, insecure]
+    why: Sticky broadcasts deprecated API 21 - any app can read.
+    how: Use regular broadcasts with explicit receivers.
+  DEP_LOCAL_BROADCAST:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, LocalBroadcastManager]
+    why: LocalBroadcastManager deprecated.
+    how: Use LiveData or similar reactive patterns.
+  DEP_PLATFORM_FRAGMENT:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, android.app.Fragment]
+    why: Platform fragments deprecated.
+    how: Use AndroidX Fragment.
+  DEP_ASYNC_TASK:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, AsyncTask]
+    why: AsyncTask deprecated in API 30.
+    how: Use java.util.concurrent or Kotlin coroutines.
+  DEP_LOADER:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, Loader, LoaderManager]
+    why: Loaders deprecated.
+    how: Use ViewModel with LiveData.
+  DEP_STORAGE_PERMISSION:
+    owasp: [MASVS-CODE-4]
+    mitre_keywords: [deprecated, storage permission, scoped]
+    why: Storage permissions behavior changed in API 29+.
+    how: Use scoped storage or MediaStore APIs.
+  DEP_SET_ACCESSIBLE:
+    owasp: [MASVS-CODE-4, MASVS-RESILIENCE-4]
+    mitre_keywords: [reflection, setAccessible, bypass]
+    why: setAccessible bypasses access controls - security implications.
+    how: Avoid reflection on restricted APIs. Review necessity.
+  DEP_RUNTIME_EXEC:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [Runtime.exec, command execution]
+    why: Runtime.exec with unsanitized input enables command injection.
+    how: Use ProcessBuilder. Validate all inputs.
+  DEP_PROCESS_BUILDER:
+    owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mitre_keywords: [ProcessBuilder, command execution]
+    why: ProcessBuilder with unsanitized input enables command injection.
+    how: Validate and whitelist all command arguments.
+  DEP_SMALI_DES:
+    owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mitre_keywords: [deprecated, DES, smali]
+    why: DES cipher in smali - cryptographically insecure.
+    how: Replace with AES.
+  DEP_SMALI_MD5:
+    owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mitre_keywords: [deprecated, MD5, smali]
+    why: MD5 hash in smali - weak algorithm.
+    how: Use SHA-256 instead.
