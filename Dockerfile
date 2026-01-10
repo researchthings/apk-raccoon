@@ -95,8 +95,8 @@ FROM python:3.11-slim-bookworm
 
 # Labels for image metadata
 LABEL maintainer="Randy Grant <rgrant.research@gmail.com>"
-LABEL description="APK Raccoon - Android APK Security Scanner with OWASP MASVS/MSTG coverage"
-LABEL version="2.0"
+LABEL description="APK Raccoon - Android APK security scanner with OWASP MASVS/MSTG coverage"
+LABEL version="1.0"
 
 # Install only runtime dependencies (no wget/curl needed in final image)
 RUN apt-get update && apt-get install -y --no-install-recommends \

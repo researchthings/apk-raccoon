@@ -11,7 +11,7 @@ The trash panda that digs through your APK garbage
 to find security vulnerabilities
 ```
 
-**APK Raccoon v2.2.0** is a comprehensive Android APK security scanner with **99% or so OWASP MASTG coverage**. It performs deep static analysis across **30 security scanners**, generates SBOM with CVE matching, and produces reports in **CSV, HTML, and SARIF** formats with actionable remediation guidance.
+**APK Raccoon v1.0.0** is a comprehensive Android APK security scanner with **OWASP MASTG coverage**. It performs deep static analysis across **30 security scanners**, generates SBOM with CVE matching, and produces reports in **CSV, HTML, and SARIF** formats with actionable remediation guidance.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -302,8 +302,8 @@ pytest tests/test_patterns.py tests/test_advanced_scanners.py -v
 ```
 tests/
 ├── test_patterns.py           # Core pattern matching tests (secrets, crypto)
-├── test_new_scanners.py       # v2.1.0 scanner tests (Firebase, StrandHogg, etc.)
-├── test_advanced_scanners.py  # v2.2.0 scanner tests (ZipSlip, XXE, etc.)
+├── test_new_scanners.py       # Extended scanner tests (Firebase, StrandHogg, etc.)
+├── test_advanced_scanners.py  # Advanced scanner tests (ZipSlip, XXE, etc.)
 ├── test_scanner_utils.py      # Utility function tests
 └── conftest.py                # Pytest fixtures
 ```
@@ -313,8 +313,8 @@ tests/
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_patterns.py` | 45 | Core secret/crypto patterns |
-| `test_new_scanners.py` | 50 | Extended scanners (v2.1.0) |
-| `test_advanced_scanners.py` | 41 | Advanced scanners (v2.2.0) |
+| `test_new_scanners.py` | 50 | Extended scanners |
+| `test_advanced_scanners.py` | 41 | Advanced scanners |
 | `test_scanner_utils.py` | 27 | CSV output, file iteration |
 | **Total** | **163** | All pattern matching |
 
@@ -397,7 +397,7 @@ find bin tests -name "*.py" | entr -c pytest -v
 | 12 | `scan_content_providers.py` | Exported providers, SQL injection |
 | 13 | `scan_pending_intents.py` | Empty intents, mutable flags |
 
-### Extended Scanners (14-20) - v2.1.0
+### Extended Scanners (14-20)
 
 | # | Scanner | What It Detects |
 |---|---------|-----------------|
@@ -409,7 +409,7 @@ find bin tests -name "*.py" | entr -c pytest -v
 | 19 | `scan_native_libs.py` | NX/RELRO/canary flags, known CVEs |
 | 20 | `scan_dynamic_loading.py` | DexClassLoader abuse, remote code download |
 
-### Advanced Scanners (21-30) - v2.2.0
+### Advanced Scanners (21-30)
 
 | # | Scanner | What It Detects | CWE |
 |---|---------|-----------------|-----|
@@ -667,25 +667,16 @@ MIT License - See [LICENSE](LICENSE) file
 
 ## Changelog
 
-### v2.2.0 (2026-01-10)
+### v1.0.0 (2026-01-10)
 
-- Added 10 new advanced scanners (21-30)
+- Initial release
+- 30 security scanners with OWASP MASTG coverage
 - HTML dashboard output with Chart.js
 - SARIF 2.1.0 output for CI/CD integration
-- 100% OWASP MASTG test coverage
-- 163 unit tests
-
-### v2.1.0
-
-- Added 7 extended scanners (14-20)
-- Firebase, StrandHogg, deep links, tapjacking
+- SBOM/CVE analysis with Syft/Grype
 - MITRE ATT&CK Mobile mapping
-
-### v2.0.0
-
-- Initial 13 core scanners
-- SBOM/CVE analysis
 - Docker support
+- 163 unit tests
 
 ---
 

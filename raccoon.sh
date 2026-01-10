@@ -13,8 +13,8 @@
 
 # Author: Randy Grant
 # Date: 01-10-2026
-# Version: 2.2.0
-# APK Raccoon - Android APK Security Scanner
+# Version: 1.0.0
+# APK Raccoon
 # Orchestrates Android APK security audit aligned to OWASP MASVS/MSTG.
 # Purpose: Automates decompilation, static/dynamic scans, SBOM/CVE, aggregation, and enrichment with remediation advice.
 # Why: Provides hands-off vulnerability detection with fix guidance for security pros.
@@ -40,7 +40,7 @@ DO_SARIF=0            # if 1, generate SARIF report
 usage() {
   cat <<USAGE
 
-APK Raccoon v2.2.0 - Android APK Security Scanner
+APK Raccoon v1.0.0
 The trash panda that digs through your APK garbage to find vulnerabilities
 
 Usage: $(basename "$0") [options] <app.apk>
@@ -119,7 +119,7 @@ preflight_check() {
     "bin/scan_cert_pinning.py"
     "bin/scan_content_providers.py"
     "bin/scan_pending_intents.py"
-    # New scanners (v2.1.0)
+    # Extended scanners
     "bin/scan_firebase.py"
     "bin/scan_task_hijacking.py"
     "bin/scan_deep_links.py"
@@ -127,7 +127,7 @@ preflight_check() {
     "bin/scan_broadcasts.py"
     "bin/scan_native_libs.py"
     "bin/scan_dynamic_loading.py"
-    # Advanced scanners (v2.2.0)
+    # Advanced scanners
     "bin/scan_zip_slip.py"
     "bin/scan_serialization.py"
     "bin/scan_fragment_injection.py"
@@ -362,7 +362,7 @@ if [[ $DO_STATIC -eq 1 ]]; then
   echo "    [13/30] PendingIntent security..."
   run_scanner "PendingIntent scan"   bin/scan_pending_intents.py "$SRC_DIR" "$SCANS/pending_intents.csv" "$APK_LOCAL" "$MANI/AndroidManifest.xml"
 
-  # Extended scanners (v2.1.0)
+  # Extended scanners
   echo ""
   echo "    [14/30] Firebase misconfiguration..."
   run_scanner "Firebase scan"        bin/scan_firebase.py "$SRC_DIR" "$SCANS/firebase.csv" "$APK_LOCAL"
@@ -379,7 +379,7 @@ if [[ $DO_STATIC -eq 1 ]]; then
   echo "    [20/30] Dynamic code loading..."
   run_scanner "Dynamic loading scan" bin/scan_dynamic_loading.py "$SRC_DIR" "$SCANS/dynamic_loading.csv"
 
-  # Advanced scanners (v2.2.0 - Complete MASTG Coverage)
+  # Advanced scanners
   echo ""
   echo "    [21/30] Zip slip (path traversal)..."
   run_scanner "Zip slip scan"        bin/scan_zip_slip.py "$SRC_DIR" "$SCANS/zip_slip.csv"
@@ -490,7 +490,7 @@ fi
 
 if [[ $DO_SARIF -eq 1 ]]; then
   echo "[*] Generating SARIF report..."
-  if python3 bin/generate_sarif.py "$ABS_AUDIT_DIR/findings_enriched.csv" "$ABS_AUDIT_DIR/findings.sarif" --tool-version "2.2.0"; then
+  if python3 bin/generate_sarif.py "$ABS_AUDIT_DIR/findings_enriched.csv" "$ABS_AUDIT_DIR/findings.sarif" --tool-version "1.0.0"; then
     echo "[+] SARIF report generated: $ABS_AUDIT_DIR/findings.sarif"
   else
     echo "[!] Warning: SARIF report generation failed."
