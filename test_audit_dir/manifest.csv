@@ -1,4 +1,0 @@
-Source,RuleID,Title,Location,Evidence,Severity,HowFound
-manifest,MANI_EXPORTED,Exported activity,./test_audit_dir/test_manifest.xml,activity: com.jumpapp.mobile.ui.MainActivity,Medium,XML parse
-manifest,MANI_EXPORTED,Exported activity,./test_audit_dir/test_manifest.xml,activity: androidx.compose.ui.tooling.PreviewActivity,Medium,XML parse
-manifest,MANI_EXPORTED,Exported receiver,./test_audit_dir/test_manifest.xml,receiver: androidx.profileinstaller.ProfileInstallReceiver,Medium,XML parse

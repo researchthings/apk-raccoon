@@ -173,8 +173,10 @@ tramp
 input/
 output/
 
-# Test decompilation output
+# Test output artifacts (generated during test runs)
 test_decompile/
+test_audit_dir/
+test_outputs/
 
 # Temporary files
 *.tmp

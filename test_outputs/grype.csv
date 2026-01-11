@@ -1,2 +1,0 @@
-Source,RuleID,Title,Location,Evidence,Severity,HowFound
-sbom,SBOM_CVE-123,CVE-123 in testlib:1.0,testlib,test,High,grype JSON
