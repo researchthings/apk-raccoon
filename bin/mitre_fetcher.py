@@ -12,7 +12,7 @@ import traceback
 def main():
     try:
         offline = "--offline" in sys.argv
-        out_json = sys.argv[-2] if len(sys.argv) > 2 else "../data/mobile-attack.json"
+        out_json = sys.argv[-2] if len(sys.argv) > 2 else "../data/mitre_mobile_attack.json"
         etag_file = sys.argv[-1] if len(sys.argv) > 1 else "../data/mitre_etag.txt"
         url = "https://raw.githubusercontent.com/mitre/cti/master/mobile-attack/mobile-attack.json"
         # url = "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/refs/heads/master/mobile-attack/mobile-attack.json"

@@ -7,7 +7,15 @@
 # Why: Detects exposed components at runtime; complements static manifest analysis for real-world risks.
 
 import sys, os, subprocess, pandas as pd, xml.etree.ElementTree as ET
-from androguard.core.bytecodes.apk import APK
+import logging
+
+# Suppress androguard's verbose debug logging
+logging.getLogger("androguard").setLevel(logging.WARNING)
+
+try:
+    from androguard.core.apk import APK  # androguard 4.x
+except ImportError:
+    from androguard.core.bytecodes.apk import APK  # androguard 3.x
 import traceback
 import time
 

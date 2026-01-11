@@ -1,0 +1,31 @@
+version: '3.8'
+
+# =============================================================================
+# APK Raccoon - Docker Compose for Multi-Scan Workflows
+# =============================================================================
+#
+# Usage:
+#   # Place APK files in ./input directory
+#   mkdir -p input output
+#   cp /path/to/app.apk input/
+#
+#   # Run a scan
+#   docker-compose run raccoon /input/app.apk
+#
+#   # Run with options
+#   docker-compose run raccoon --html --sarif /input/app.apk
+#
+#   # Results appear in ./output/<apk-name>_YYYYMMDD_HHMMSS/
+#
+# =============================================================================
+
+services:
+  raccoon:
+    build: .
+    volumes:
+      - ./input:/input:ro      # APK files (read-only for safety)
+      - ./output:/output       # Scan results
+    environment:
+      - AUDIT_DIR=/output
+    # Default shows help; override with APK path when running:
+    #   docker-compose run raccoon /input/app.apk

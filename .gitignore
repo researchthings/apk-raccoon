@@ -165,7 +165,13 @@ tramp
 # =============================================================================
 
 # Audit output directories (timestamped scan results)
-audit_*/
+# Format: <apk-name>_YYYYMMDD_HHMMSS/
+*_????????_??????/
+*_????????_??????
+
+# Docker volume mount directories
+input/
+output/
 
 # Test decompilation output
 test_decompile/

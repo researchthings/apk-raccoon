@@ -248,6 +248,8 @@ def scan_code_for_tapjacking(src_dir: str) -> list[dict]:
                         "HowFound": description,
                     })
 
+    return findings
+
 
 def scan_layouts_for_tapjacking(src_dir: str) -> list[dict]:
     """Scan layout XML files for tapjacking vulnerabilities."""

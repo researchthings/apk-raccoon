@@ -148,6 +148,11 @@ COPY bin/ /app/bin/
 COPY data/ /app/data/
 COPY raccoon.sh /app/
 
+# Create standard mount points for Docker volume mounts
+# /input - Mount APK files here (read-only recommended)
+# /output - Mount results directory here (set AUDIT_DIR=/output)
+RUN mkdir -p /input /output
+
 # =============================================================================
 # Build-time verification - Ensure all tools work
 # =============================================================================

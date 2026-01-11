@@ -171,10 +171,16 @@ preflight_check() {
 preflight_check
 
 # ---------------- Paths ----------------
-# Why: Timestamped audit dir keeps runs isolated, avoids overwriting. Use absolute paths for Docker consistency.
+# Why: Named audit dir keeps runs isolated and identifiable. Use absolute paths for Docker consistency.
 TS=$(date +"%Y%m%d_%H%M%S")
-AUDIT_DIR="${AUDIT_DIR:-audit_${TS}}"  # Default to timestamped if not set
-AUDIT_DIR="${AUDIT_DIR}/audit_${TS}"   # Always append timestamp to prevent overwrites even if AUDIT_DIR is set
+APK_BASENAME=$(basename "$APK" .apk | sed 's/[^a-zA-Z0-9._-]/_/g')  # Sanitize filename for directory name
+if [[ -z "${AUDIT_DIR:-}" ]]; then
+  # No AUDIT_DIR set: create in current directory with APK name
+  AUDIT_DIR="${APK_BASENAME}_${TS}"
+else
+  # AUDIT_DIR set (e.g., Docker /output): create subdirectory with APK name
+  AUDIT_DIR="${AUDIT_DIR}/${APK_BASENAME}_${TS}"
+fi
 mkdir -p "$AUDIT_DIR/00_meta" "$AUDIT_DIR/10_manifest" "$AUDIT_DIR/20_decompile" "$AUDIT_DIR/30_scans" "$AUDIT_DIR/40_sbom" "$AUDIT_DIR/60_dynamic" || {
   echo "[!] Error: Failed to create audit directories. Check permissions." >&2
   exit 1
@@ -398,7 +404,7 @@ if [[ $DO_STATIC -eq 1 ]]; then
   echo "    [28/30] Insecure random..."
   run_scanner "Random scan"          bin/scan_random.py "$SRC_DIR" "$SCANS/random.csv"
   echo "    [29/30] APK signature analysis..."
-  run_scanner "APK signature scan"   bin/scan_apk_signature.py "$APK_LOCAL" "$SCANS/apk_signature.csv"
+  run_scanner "APK signature scan"   bin/scan_apk_signature.py "$SCANS/apk_signature.csv" "$APK_LOCAL" "$SRC_DIR"
   echo "    [30/30] Deprecated API usage..."
   run_scanner "Deprecated APIs scan" bin/scan_deprecated_apis.py "$SRC_DIR" "$SCANS/deprecated_apis.csv"
 

@@ -1,14 +1,15 @@
 # APK Raccoon
 
 ```
-   _    ____  _  __  ____
-  / \  |  _ \| |/ / |  _ \ __ _  ___ ___ ___   ___  _ __
- / _ \ | |_) | ' /  | |_) / _` |/ __/ __/ _ \ / _ \| '_ \
-/ ___ \|  __/| . \  |  _ < (_| | (_| (_| (_) | (_) | | | |
+    _    ____  _  __  ____
+   / \  |  _ \| |/ / |  _ \ __ _  ___ ___ ___   ___  _ __
+  / _ \ | |_) | ' /  | |_) / _` |/ __/ __/ _ \ / _ \| '_ \
+ / ___ \|  __/| . \  |  _ < (_| | (_| (_| (_) | (_) | | | |
 /_/   \_\_|   |_|\_\ |_| \_\__,_|\___\___\___/ \___/|_| |_|
 
-The trash panda that digs through your APK garbage
-to find security vulnerabilities
+Digging through your APK garbage like a pro to find 
+security vulnerabilities. It's probably buggy so parental 
+descretion is avised.
 ```
 
 **APK Raccoon v1.0.0** is a comprehensive Android APK security scanner with **OWASP MASTG coverage**. It performs deep static analysis across **30 security scanners**, generates SBOM with CVE matching, and produces reports in **CSV, HTML, and SARIF** formats with actionable remediation guidance.
@@ -53,13 +54,75 @@ to find security vulnerabilities
 ### Docker (Recommended)
 
 ```bash
-# Build the image
+# Step 1: Build the image (required first time only)
 docker build -t apk-raccoon .
+```
 
-# Scan an APK with HTML and SARIF output
-docker run --rm -v "$PWD:/work" apk-raccoon --html --sarif /work/app.apk
+```bash
+# Step 2: Run a scan (choose one option below)
 
-# Results in: ./audit_YYYYMMDD_HHMMSS/
+# --- Option 1: Mount current directory for APK input AND output ---
+# Place your APK in current directory. Mount it and set AUDIT_DIR so results are saved.
+#   -v "$PWD:/work"       mounts current directory to /work inside container
+#   -e AUDIT_DIR=/work    tells raccoon to write results to /work (the mounted dir)
+#   /work/app.apk         path to APK INSIDE the container
+cp /path/to/your/app.apk ./app.apk
+docker run --rm \
+  -v "$PWD:/work" \
+  -e AUDIT_DIR=/work \
+  apk-raccoon --html --sarif /work/app.apk
+
+# Results appear in: ./<apk-name>_YYYYMMDD_HHMMSS/
+
+# --- Option 2: Separate input and output directories ---
+# Mount APK from one location, write results to another
+docker run --rm \
+  -v /path/to/apks:/input:ro \
+  -v /path/to/results:/output \
+  -e AUDIT_DIR=/output \
+  apk-raccoon --html --sarif /input/app.apk
+
+# Results appear in: /path/to/results/<apk-name>_YYYYMMDD_HHMMSS/
+
+# --- Option 3: Build APK into image (for CI/CD pipelines) ---
+# Create a Dockerfile.scan:
+#   FROM apk-raccoon
+#   COPY myapp.apk /input/target.apk
+#   ENV AUDIT_DIR=/output
+#   CMD ["--html", "--sarif", "/input/target.apk"]
+# Build and run:
+#   docker build -f Dockerfile.scan -t my-scan .
+#   docker run --rm -v "$PWD/results:/output" my-scan
+```
+
+### Docker: Multiple Scans
+
+For scanning multiple APKs, mount input and output directories:
+
+```bash
+# Mount APK directory (read-only) and output directory
+docker run --rm \
+  -v /path/to/apks:/input:ro \
+  -v /path/to/results:/output \
+  -e AUDIT_DIR=/output \
+  apk-raccoon /input/first_app.apk
+
+# Run another scan with same setup
+docker run --rm \
+  -v /path/to/apks:/input:ro \
+  -v /path/to/results:/output \
+  -e AUDIT_DIR=/output \
+  apk-raccoon /input/second_app.apk
+
+# Results in: /path/to/results/first_app_YYYYMMDD_HHMMSS/
+#             /path/to/results/second_app_YYYYMMDD_HHMMSS/
+```
+
+Or use docker-compose for easier multi-scan workflows:
+
+```bash
+# With docker-compose.yml in the repo
+docker-compose run raccoon /input/app.apk
 ```
 
 ### Local with uv (Fastest)
@@ -238,8 +301,10 @@ pip install -r requirements-dev.txt
 
 ### Output Directory Structure
 
+Each scan creates a directory named after the APK: `<apk-name>_YYYYMMDD_HHMMSS/`
+
 ```
-audit_20260110_143022/
+myapp_20260110_143022/
 ├── 00_meta/
 │   └── app.apk              # Copy of scanned APK
 ├── 10_manifest/
