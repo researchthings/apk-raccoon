@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
-"""
-Tapjacking / Overlay Attack Scanner v1.0
+"""Scan for Tapjacking (Overlay Attack) vulnerabilities.
 
-Detects susceptibility to tapjacking (overlay) attacks where malicious apps
-display transparent overlays to capture user taps intended for legitimate apps.
+Detects susceptibility to tapjacking attacks where malicious apps display
+transparent overlays to capture user taps intended for legitimate apps.
 
-Checks for:
-- Missing filterTouchesWhenObscured on sensitive views
-- Missing FLAG_SECURE on sensitive activities
-- SYSTEM_ALERT_WINDOW permission usage
-- Overlay detection implementations
+Checks:
+    - Missing filterTouchesWhenObscured on sensitive views
+    - Missing FLAG_SECURE on sensitive activities
+    - SYSTEM_ALERT_WINDOW permission usage
+    - Overlay detection implementations
 
-References:
-- https://developer.android.com/privacy-and-security/risks/tapjacking
-- https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0062/
-- https://blog.nviso.eu/2020/06/02/preventing-tapjacking-attacks-in-android/
+OWASP MASTG Coverage:
+    - MASTG-TEST-0062: Testing for Tapjacking
 
-OWASP Alignment: MASVS-PLATFORM-2, MASVS-RESILIENCE-3
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -44,13 +43,28 @@ SENSITIVE_ACTIVITY_KEYWORDS = [
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def parse_manifest(manifest_path: str) -> ET.Element | None:
-    """Parse AndroidManifest.xml and return root element."""
+    """Parse AndroidManifest.xml and return root element.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+
+    Returns:
+        Root XML element if parsing succeeds, None on failure.
+    """
     try:
         ET.register_namespace("android", ANDROID_NS)
         tree = ET.parse(manifest_path)
@@ -61,12 +75,28 @@ def parse_manifest(manifest_path: str) -> ET.Element | None:
 
 
 def get_android_attr(elem: ET.Element, attr: str) -> str | None:
-    """Get Android namespace attribute value."""
+    """Get Android namespace attribute value from XML element.
+
+    Args:
+        elem: XML element to query.
+        attr: Attribute name without namespace prefix.
+
+    Returns:
+        Attribute value if found, None otherwise.
+    """
     return elem.get(f"{{{ANDROID_NS}}}{attr}")
 
 
 def iter_source_files(src_dir: str, extensions: set[str]) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+        extensions: Set of file extensions to include (e.g., {'.java', '.xml'}).
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -81,13 +111,25 @@ def iter_source_files(src_dir: str, extensions: set[str]) -> Iterator[tuple[str,
 
 
 def is_sensitive_activity(name: str) -> bool:
-    """Check if activity name suggests sensitive functionality."""
+    """Check if activity name suggests sensitive functionality.
+
+    Args:
+        name: Activity class name to check.
+
+    Returns:
+        True if the activity name contains sensitive keywords.
+    """
     name_lower = name.lower()
     return any(keyword in name_lower for keyword in SENSITIVE_ACTIVITY_KEYWORDS)
 
 
-def check_manifest_permissions(root: ET.Element, findings: list[dict]):
-    """Check for overlay-related permissions."""
+def check_manifest_permissions(root: ET.Element, findings: list[dict]) -> None:
+    """Check for overlay-related permissions.
+
+    Args:
+        root: Root XML element of AndroidManifest.xml.
+        findings: List to append findings to (modified in place).
+    """
     for uses_perm in root.findall("uses-permission"):
         perm_name = get_android_attr(uses_perm, "name")
         if perm_name == "android.permission.SYSTEM_ALERT_WINDOW":
@@ -102,8 +144,13 @@ def check_manifest_permissions(root: ET.Element, findings: list[dict]):
             })
 
 
-def check_activities_for_tapjacking(root: ET.Element, findings: list[dict]):
-    """Check activities for tapjacking vulnerability indicators."""
+def check_activities_for_tapjacking(root: ET.Element, findings: list[dict]) -> None:
+    """Check activities for tapjacking vulnerability indicators.
+
+    Args:
+        root: Root XML element of AndroidManifest.xml.
+        findings: List to append findings to (modified in place).
+    """
     app_elem = root.find("application")
     if app_elem is None:
         return
@@ -216,7 +263,14 @@ LAYOUT_PATTERNS = [
 
 
 def scan_code_for_tapjacking(src_dir: str) -> list[dict]:
-    """Scan source code for tapjacking patterns."""
+    """Scan source code for tapjacking patterns.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for tapjacking patterns.
+    """
     findings = []
     seen = set()
 
@@ -252,7 +306,14 @@ def scan_code_for_tapjacking(src_dir: str) -> list[dict]:
 
 
 def scan_layouts_for_tapjacking(src_dir: str) -> list[dict]:
-    """Scan layout XML files for tapjacking vulnerabilities."""
+    """Scan layout XML files for tapjacking vulnerabilities.
+
+    Args:
+        src_dir: Directory containing layout XML files.
+
+    Returns:
+        List of finding dictionaries for layout vulnerabilities.
+    """
     findings = []
     seen = set()
 
@@ -291,8 +352,13 @@ def scan_layouts_for_tapjacking(src_dir: str) -> list[dict]:
     return findings
 
 
-def check_target_sdk(root: ET.Element, findings: list[dict]):
-    """Check target SDK for tapjacking-related behavior changes."""
+def check_target_sdk(root: ET.Element, findings: list[dict]) -> None:
+    """Check target SDK for tapjacking-related behavior changes.
+
+    Args:
+        root: Root XML element of AndroidManifest.xml.
+        findings: List to append findings to (modified in place).
+    """
     uses_sdk = root.find("uses-sdk")
     if uses_sdk is not None:
         target_sdk = get_android_attr(uses_sdk, "targetSdkVersion")
@@ -315,7 +381,15 @@ def check_target_sdk(root: ET.Element, findings: list[dict]):
 
 
 def scan_for_tapjacking(manifest_path: str, src_dir: str | None = None) -> list[dict]:
-    """Main scanning function for tapjacking vulnerabilities."""
+    """Scan for tapjacking vulnerabilities.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+        src_dir: Optional path to source directory for code analysis.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     # Parse manifest
@@ -378,8 +452,13 @@ def scan_for_tapjacking(manifest_path: str, src_dir: str | None = None) -> list[
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -392,7 +471,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for tapjacking vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to AndroidManifest.xml
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <manifest.xml> <output.csv> [src_dir]", file=sys.stderr)
         sys.exit(1)

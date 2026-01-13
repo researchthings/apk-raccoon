@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""
-APK Signature Security Scanner v1.0
+"""Scan for APK Signature security weaknesses.
 
-Analyzes APK signing configuration for security weaknesses including:
-- Signature scheme versions (v1/v2/v3/v4)
-- Certificate algorithm strength
-- Signature verification in code
-- Debug certificate detection
+Analyzes APK signing configuration for security weaknesses including
+signature scheme versions, certificate strength, and debug certificate usage.
 
-References:
-- https://mas.owasp.org/MASTG/tests/android/MASVS-RESILIENCE/MASTG-TEST-0038/
-- https://developer.android.com/about/versions/pie/android-9.0#apk-key-rotation
-- https://cwe.mitre.org/data/definitions/347.html
+Checks:
+    - Signature scheme versions (v1/v2/v3/v4)
+    - Certificate algorithm strength (SHA1, RSA key size)
+    - Debug certificate detection
+    - Signature verification patterns in code
 
-OWASP Alignment: MASVS-RESILIENCE-3
-CWE: CWE-347 (Improper Verification of Cryptographic Signature)
+OWASP MASTG Coverage:
+    - MASTG-TEST-0038: Testing APK Signature Verification
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -33,13 +34,28 @@ CSV_FIELDNAMES = ["Source", "RuleID", "Title", "Location", "Evidence", "Severity
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -56,7 +72,14 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
 
 
 def check_apk_signature(apk_path: str) -> list[dict]:
-    """Check APK signature using apksigner if available."""
+    """Check APK signature using apksigner if available.
+
+    Args:
+        apk_path: Path to the APK file to analyze.
+
+    Returns:
+        List of finding dictionaries with signature analysis results.
+    """
     findings = []
 
     if not os.path.exists(apk_path):
@@ -240,7 +263,14 @@ CODE_PATTERNS = [
 
 
 def scan_code_for_signature(src_dir: str) -> list[dict]:
-    """Scan source code for signature-related patterns."""
+    """Scan source code for signature-related patterns.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for signature verification patterns.
+    """
     findings = []
     seen = set()
 
@@ -275,7 +305,15 @@ def scan_code_for_signature(src_dir: str) -> list[dict]:
 
 
 def scan_for_signature_issues(apk_path: str | None = None, src_dir: str | None = None) -> list[dict]:
-    """Main scanning function."""
+    """Scan for APK signature security issues.
+
+    Args:
+        apk_path: Optional path to APK file for signature analysis.
+        src_dir: Optional path to source directory for code analysis.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     if apk_path:
@@ -302,8 +340,13 @@ def scan_for_signature_issues(apk_path: str | None = None, src_dir: str | None =
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -316,7 +359,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan APK signature security and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Output CSV path
+        sys.argv[2]: Optional path to APK file
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <output.csv> [apk_path] [src_dir]", file=sys.stderr)
         sys.exit(1)

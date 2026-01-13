@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
-"""
-Implicit Intent Leakage Scanner v1.0
+"""Scan for Implicit Intent data leakage vulnerabilities.
 
-Detects insecure use of implicit intents that can lead to:
-- Sensitive data leakage to malicious apps
-- Intent interception by rogue receivers
-- Man-in-the-middle attacks on IPC
-- Information disclosure via broadcast sniffing
+Detects insecure use of implicit intents that can lead to sensitive data
+leakage, intent interception, and man-in-the-middle attacks on IPC.
 
-Checks for:
-- sendBroadcast() without permission or explicit receiver
-- startActivity/startService with implicit intents
-- Sensitive data in broadcast extras
-- Missing setPackage() on intents with sensitive data
+Checks:
+    - sendBroadcast() without permission or explicit receiver
+    - startActivity/startService with implicit intents
+    - Sensitive data in broadcast extras
+    - Missing setPackage() on intents with sensitive data
 
-References:
-- https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0009/
-- https://developer.android.com/privacy-and-security/risks/implicit-intent
-- https://cwe.mitre.org/data/definitions/927.html
+OWASP MASTG Coverage:
+    - MASTG-TEST-0009: Testing for Implicit Intent Leakage
+    - MASTG-TEST-0030: Testing Broadcast Senders
 
-OWASP Alignment: MASVS-PLATFORM-1, MASVS-PLATFORM-3
-CWE: CWE-927 (Use of Implicit Intent for Sensitive Communication)
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -45,13 +41,28 @@ SENSITIVE_KEYWORDS = [
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -209,7 +220,15 @@ SMALI_PATTERNS = [
 
 
 def analyze_intent_context(content: str, match_pos: int) -> str:
-    """Analyze the context around an intent usage to determine risk."""
+    """Analyze the context around an intent usage to determine risk.
+
+    Args:
+        content: Full file content being analyzed.
+        match_pos: Position of the match in the content.
+
+    Returns:
+        Comma-separated string of protection methods found, or 'none'.
+    """
     # Look for nearby setPackage/setComponent/setClass calls
     context_before = content[max(0, match_pos - 300):match_pos]
     context_after = content[match_pos:match_pos + 300]
@@ -228,7 +247,14 @@ def analyze_intent_context(content: str, match_pos: int) -> str:
 
 
 def scan_for_implicit_intents(src_dir: str) -> list[dict]:
-    """Scan source code for implicit intent vulnerabilities."""
+    """Scan source code for implicit intent vulnerabilities.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
     seen = set()
 
@@ -313,8 +339,13 @@ def scan_for_implicit_intents(src_dir: str) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -327,7 +358,16 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for implicit intent vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv>", file=sys.stderr)
         sys.exit(1)

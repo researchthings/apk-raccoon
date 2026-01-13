@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
+"""Scan for authentication and authorization vulnerabilities.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 2.0
-# Script to scan for insecure authentication/authorization issues in Android code and manifest
-# Why: Addresses OWASP M3; weak auth leads to unauthorized access.
-#
-# Improvements in v2.0:
-# - Fixed overly broad regex patterns that caused high false positives
-# - Removed broken negative lookahead patterns
-# - Added context awareness for session/token patterns
-# - More specific IDOR detection
+Detects weak password configurations, insecure session handling, hardcoded
+credentials, IDOR risks, and exported components without permissions.
+
+Features (v2.0):
+    - Context-aware regex patterns to reduce false positives
+    - IDOR detection for user-controlled IDs
+    - Manifest analysis for unprotected exports
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0003: Authentication bypass detection
+    - MASTG-TEST-0018: IDOR vulnerability detection
+    - MASTG-TEST-0016: Exported component analysis
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 2.0
+"""
 
 import sys
 import os
@@ -125,8 +132,15 @@ SECURITY_CONTEXTS = {
 }
 
 
-def parse_manifest(mani_path):
-    """Parse manifest to find exported components without permissions."""
+def parse_manifest(mani_path: str) -> list:
+    """Parse manifest to find exported components without permissions.
+
+    Args:
+        mani_path: Path to AndroidManifest.xml file.
+
+    Returns:
+        List of dicts with component info for each unprotected export.
+    """
     results = []
     try:
         tree = ET.parse(mani_path)
@@ -161,8 +175,17 @@ def parse_manifest(mani_path):
     return results
 
 
-def iter_text(src_dir, apk_path, mani_path):
-    """Iterate over source files yielding (path, content) tuples."""
+def iter_text(src_dir: str, apk_path: str, mani_path: str):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+        mani_path: Path to AndroidManifest.xml.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     # Yield manifest content
     if mani_path and os.path.isfile(mani_path):
         with open(mani_path, "r", encoding="utf-8") as f:
@@ -195,8 +218,16 @@ def iter_text(src_dir, apk_path, mani_path):
                         continue
 
 
-def check_context(text, rule_id):
-    """Check if required security context is present for context-dependent rules."""
+def check_context(text: str, rule_id: str) -> bool:
+    """Check if required security context is present for context-dependent rules.
+
+    Args:
+        text: File content to check.
+        rule_id: The rule ID to check context for.
+
+    Returns:
+        True if context matches or no context required.
+    """
     if rule_id not in SECURITY_CONTEXTS:
         return True  # No context required
 
@@ -206,7 +237,18 @@ def check_context(text, rule_id):
     return False
 
 
-def main():
+def main() -> None:
+    """Scan for auth issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Path to AndroidManifest.xml
+        sys.argv[3]: Output CSV path
+        sys.argv[4]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 4:
             print("Usage: scan_auth_issues.py <src_dir> <manifest.xml> <out.csv> [apk_path]", file=sys.stderr)

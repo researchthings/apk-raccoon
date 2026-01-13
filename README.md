@@ -9,10 +9,10 @@
 
 Digging through your APK garbage like a pro to find 
 security vulnerabilities. It's probably buggy so parental 
-descretion is avised.
+descretion is advised.
 ```
 
-**APK Raccoon v1.0.0** is a comprehensive Android APK security scanner with **OWASP MASTG coverage**. It performs deep static analysis across **30 security scanners**, generates SBOM with CVE matching, and produces reports in **CSV, HTML, and SARIF** formats with actionable remediation guidance.
+**APK Raccoon v1.0.0** is a comprehensive Android APK security scanner with **OWASP MASTG coverage**. It performs deep static analysis across **31 security scanners**, generates SBOM with CVE matching, and produces reports in **CSV, HTML, and SARIF** formats with actionable remediation guidance.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,14 +24,42 @@ descretion is avised.
 ## Features
 
 | Category | Description |
-|----------|-------------|
-| **30 Security Scanners** | Complete MASTG coverage: secrets, crypto, auth, network, storage, WebView, content providers, Firebase, StrandHogg, deep links, tapjacking, broadcasts, native libs, dynamic loading, zip slip, deserialization, XXE, fragment injection, and more |
+| ---------- | ------------- |
+| **31 Security Scanners** | 100% coverage of **static** analyzable Android MASTG tests (97): secrets, crypto, auth, network, storage, WebView, content providers, Firebase, StrandHogg, deep links, tapjacking, broadcasts, native libs, dynamic loading, zip slip, deserialization, XXE, fragment injection, screenshot protection, and more |
 | **SBOM + CVE Analysis** | Software composition analysis with Syft/Grype for supply chain security |
 | **200+ Detection Rules** | Modern patterns covering OWASP Top 10 Mobile, CWE Mobile, and MITRE ATT&CK Mobile |
 | **Multiple Output Formats** | CSV (default), HTML dashboard with charts, SARIF for CI/CD integration |
 | **Enriched Reports** | OWASP MASVS/MSTG mappings with "Why it matters" and "How to fix" guidance |
 | **Docker-First** | Single command, reproducible results, CI/CD ready |
-| **Offline Mode** | Works air-gapped (except MITRE fetch) |
+| **Offline Mode** | Works air gapped (except MITRE fetch) |
+
+---
+
+## OWASP MASTG Coverage
+
+APK Raccoon provides **100% coverage of static analyzable Android MASTG tests**:
+
+| Category | Total Tests | Static-Analyzable | Covered | Coverage |
+| ---------- | ------------- | ------------------- | --------- | ---------- |
+| STORAGE | 20 | 16 | 16 | 100% |
+| CRYPTO | 15 | 15 | 15 | 100% |
+| NETWORK | 20 | 20 | 20 | 100% |
+| PLATFORM | 25 | 25 | 25 | 100% |
+| CODE | 14 | 14 | 14 | 100% |
+| PRIVACY | 7 | 7 | 7 | 100% |
+| AUTH | 2 | 0 | 0 | N/A |
+| RESILIENCE | 21 | 0 | 0 | N/A |
+| **Total** | **124** | **97** | **97** | **100%** |
+
+### What About the Other 27 Tests?
+
+27 Android MASTG tests require **dynamic/runtime analysis** that static scanning cannot perform:
+
+- **AUTH (2 tests)**: Biometric and credential testing requires device interaction
+- **RESILIENCE (21 tests)**: Root detection, anti-debugging, emulator detection require runtime verification
+- **STORAGE (4 tests)**: Memory analysis and backup behavior require device testing
+
+These tests are out of scope for static analysis tools. For full MASTG compliance, complement APK Raccoon with dynamic testing tools like [Frida](https://frida.re/) or [MobSF](https://mobsf.github.io/Mobile-Security-Framework-MobSF/).
 
 ---
 
@@ -41,7 +69,7 @@ descretion is avised.
 - [Installation](#installation)
 - [Running Scans](#running-scans)
 - [Testing](#testing)
-- [Security Scanners](#security-scanners-30-total)
+- [Security Scanners](#security-scanners-31-total)
 - [Output Formats](#output-formats)
 - [CI/CD Integration](#cicd-integration)
 - [Extending APK Raccoon](#extending-apk-raccoon)
@@ -271,12 +299,12 @@ pip install -r requirements-dev.txt
 ### Command Line Options
 
 | Option | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `--no-setup` | Skip tool verification (Docker has them pre-installed) |
 | `--no-decompile` | Skip jadx/apktool decompilation |
-| `--no-static` | Skip all 30 Python static scanners |
+| `--no-static` | Skip all 31 Python static scanners |
 | `--no-sbom` | Skip SBOM + CVE analysis (syft/grype) |
-| `--no-dynamic` | Skip ADB dynamic IPC probe |
+| `--dynamic` | Enable ADB dynamic IPC probe (disabled by default) |
 | `--offline` | Do not fetch MITRE data (use cache) |
 | `--strict` | Exit non-zero on any scanner failure (for CI/CD) |
 | `--html` | Generate interactive HTML dashboard |
@@ -313,12 +341,12 @@ myapp_20260110_143022/
 │   └── sources/             # Decompiled Java/Kotlin (jadx)
 │   └── smali/               # Smali bytecode (apktool fallback)
 ├── 30_scans/
-│   ├── manifest.csv         # 30 individual scan results
+│   ├── manifest.csv         # 31 individual scan results
 │   ├── secrets.csv
 │   ├── crypto.csv
 │   ├── zip_slip.csv
 │   ├── serialization.csv
-│   └── ... (30 scan files)
+│   └── ... (31 scan files)
 ├── 40_sbom/
 │   ├── syft.json            # Software Bill of Materials
 │   ├── grype.json           # CVE matches
@@ -376,7 +404,7 @@ tests/
 ### Test Categories
 
 | Test File | Tests | Coverage |
-|-----------|-------|----------|
+| ----------- | ------- | ---------- |
 | `test_patterns.py` | 45 | Core secret/crypto patterns |
 | `test_new_scanners.py` | 50 | Extended scanners |
 | `test_advanced_scanners.py` | 41 | Advanced scanners |
@@ -442,12 +470,12 @@ find bin tests -name "*.py" | entr -c pytest -v
 
 ---
 
-## Security Scanners (30 Total)
+## Security Scanners (31 Total)
 
 ### Core Scanners (1-13)
 
 | # | Scanner | What It Detects |
-|---|---------|-----------------|
+| --- | --------- | ----------------- |
 | 1 | `scan_manifest.py` | Debuggable, exported components, dangerous permissions, backup settings |
 | 2 | `scan_secrets.py` | AWS keys, API tokens, private keys, hardcoded passwords |
 | 3 | `scan_crypto_issues.py` | ECB mode, DES/RC2, weak hashes, static IVs |
@@ -465,7 +493,7 @@ find bin tests -name "*.py" | entr -c pytest -v
 ### Extended Scanners (14-20)
 
 | # | Scanner | What It Detects |
-|---|---------|-----------------|
+| --- |--------- | ----------------- |
 | 14 | `scan_firebase.py` | Exposed database URLs, FCM server keys |
 | 15 | `scan_task_hijacking.py` | StrandHogg 1.0/2.0, taskAffinity issues |
 | 16 | `scan_deep_links.py` | Missing autoVerify, scheme hijacking |
@@ -474,10 +502,10 @@ find bin tests -name "*.py" | entr -c pytest -v
 | 19 | `scan_native_libs.py` | NX/RELRO/canary flags, known CVEs |
 | 20 | `scan_dynamic_loading.py` | DexClassLoader abuse, remote code download |
 
-### Advanced Scanners (21-30)
+### Advanced Scanners (21-31)
 
 | # | Scanner | What It Detects | CWE |
-|---|---------|-----------------|-----|
+| --- | --------- | ----------------- | ----- |
 | 21 | `scan_zip_slip.py` | Path traversal in ZIP extraction | CWE-22 |
 | 22 | `scan_serialization.py` | Unsafe ObjectInputStream/XMLDecoder | CWE-502 |
 | 23 | `scan_fragment_injection.py` | PreferenceActivity fragment bypass | CWE-470 |
@@ -488,6 +516,7 @@ find bin tests -name "*.py" | entr -c pytest -v
 | 28 | `scan_random.py` | java.util.Random vs SecureRandom | CWE-338 |
 | 29 | `scan_apk_signature.py` | APK signature scheme analysis | CWE-347 |
 | 30 | `scan_deprecated_apis.py` | Obsolete/insecure API usage | CWE-477 |
+| 31 | `scan_screenshot_protection.py` | FLAG_SECURE, sensitive screen protection | CWE-200 |
 
 ---
 
@@ -531,6 +560,24 @@ SARIF 2.1.0 format for CI/CD integration:
 # Upload to GitHub Security:
 # gh api repos/{owner}/{repo}/code-scanning/sarifs -f sarif=@audit_*/findings.sarif
 ```
+
+---
+
+## Severity Definitions
+
+All findings are classified using a 5-level severity scale:
+
+| Severity | Description | Examples | Action |
+|---------- | ------------- | ---------- | -------- |
+| **Critical** | Immediate exploitation risk | Hardcoded secrets, disabled cert validation, SQL injection | Fix immediately |
+| **High** | Significant weakness with clear attack vector | Weak crypto (DES/ECB), cleartext traffic, exported sensitive components | Fix before release |
+| **Medium** | Moderate risk requiring review | Debug flags, missing protections, static IV | Address before release |
+| **Low** | Best practice violations | Verbose logging, unstripped symbols, missing cert pinning | Consider fixing |
+| **Info** | Informational/positive observations | FLAG_SECURE detected, root detection present | No action needed |
+
+**Key distinction**: Critical/High/Medium/Low indicate problems found. Info indicates protection mechanisms detected or neutral observations.
+
+See [data/severity_definitions.yaml](data/severity_definitions.yaml) for the complete definition with examples.
 
 ---
 
@@ -695,16 +742,15 @@ pytest -v --tb=long
 - Python 3.10+
 - jadx 1.5.0+ (preferred) or apktool 2.9+
 - (Recommended) syft, grype for SBOM/CVE
-- (Optional) adb for dynamic probing
 - (Optional) readelf for native lib analysis
 
 ---
 
 ## Security Considerations
 
-- APK Raccoon is for **authorized security testing only**
-- Findings should be reviewed by qualified security professionals
-- Some patterns may produce false positives - manual verification recommended
+- APK Raccoon is for **authorized apk vulnerability testing only**
+- Findings should be reviewed by qualified security professionals as there could be a lot of stuff
+- Some patterns will produce false positives - manual verification recommended
 - Do not use on APKs you don't have permission to analyze
 
 ---
@@ -735,7 +781,7 @@ MIT License - See [LICENSE](LICENSE) file
 ### v1.0.0 (2026-01-10)
 
 - Initial release
-- 30 security scanners with OWASP MASTG coverage
+- 31 security scanners with 100% coverage of static-analyzable Android MASTG tests (97)
 - HTML dashboard output with Chart.js
 - SARIF 2.1.0 output for CI/CD integration
 - SBOM/CVE analysis with Syft/Grype
@@ -745,4 +791,4 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
-*All findings should be reviewed by qualified security professionals. This tool is for authorized security testing only.*
+*All findings should be reviewed by qualified cybersecurity professionals. This tool is for authorized security testing only.*

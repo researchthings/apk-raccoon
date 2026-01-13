@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
+"""Scan for certificate pinning implementation and bypass vulnerabilities.
 
-# Author: Randy Grant
-# Date: 01-09-2026
-# Version: 1.0
-# Script to scan for certificate pinning implementation and bypasses
-# Why: Certificate pinning prevents MITM attacks; its absence or bypass is critical.
-#
-# Checks:
-# - Network Security Config pinning declarations
-# - OkHttp CertificatePinner usage
-# - TrustManagerFactory customizations
-# - Common pinning bypass techniques
-# - Missing pinning on sensitive endpoints
+Detects presence/absence of certificate pinning, analyzes network security
+config, identifies pinning bypass techniques, and flags sensitive endpoints
+without pinning protection.
+
+Checks:
+    - Network Security Config pinning declarations
+    - OkHttp CertificatePinner usage
+    - TrustManagerFactory customizations
+    - Common pinning bypass techniques (reflection, Xposed, Frida)
+    - Missing pinning on sensitive endpoints
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0020: Certificate pinning analysis
+    - MASTG-TEST-0242: Pinning bypass detection
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
+"""
 
 import sys
 import os
@@ -107,8 +115,15 @@ SENSITIVE_ENDPOINT_PATTERNS = [
 ]
 
 
-def parse_network_security_config(config_path):
-    """Parse network_security_config.xml for pinning declarations."""
+def parse_network_security_config(config_path: str) -> tuple:
+    """Parse network_security_config.xml for pinning declarations.
+
+    Args:
+        config_path: Path to network_security_config.xml.
+
+    Returns:
+        Tuple of (findings list, pinned_domains list).
+    """
     findings = []
     pinned_domains = []
 
@@ -193,8 +208,15 @@ def parse_network_security_config(config_path):
     return findings, pinned_domains
 
 
-def find_network_security_config(src_dir):
-    """Find network_security_config.xml in the source directory."""
+def find_network_security_config(src_dir: str) -> str:
+    """Find network_security_config.xml in the source directory.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+
+    Returns:
+        Path to config file if found, None otherwise.
+    """
     for root, _, files in os.walk(src_dir):
         for fn in files:
             if fn == 'network_security_config.xml':
@@ -202,8 +224,16 @@ def find_network_security_config(src_dir):
     return None
 
 
-def iter_text(src_dir, apk_path=None):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str = None):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -228,7 +258,17 @@ def iter_text(src_dir, apk_path=None):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan for certificate pinning and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             print("Usage: scan_cert_pinning.py <src_dir> <out.csv> [apk_path]", file=sys.stderr)

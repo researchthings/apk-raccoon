@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""
-Deep Link Security Scanner v1.0
+"""Scan for Deep Link security vulnerabilities.
 
-Detects insecure deep link / App Link configurations that can lead to:
-- Phishing attacks via unverified deep links
-- Intent injection through URL parameters
-- WebView injection from deep link data
-- Credential theft via malicious link handlers
+Detects insecure deep link / App Link configurations that can lead to
+phishing attacks, intent injection, WebView injection, and credential theft.
 
-References:
-- https://developer.android.com/privacy-and-security/risks/unsafe-use-of-deeplinks
-- https://developer.android.com/training/app-links/verify-android-applinks
-- https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0028/
+Checks:
+    - Unverified deep links missing autoVerify
+    - Custom URL schemes vulnerable to hijacking
+    - HTTP-only deep links (no HTTPS)
+    - Wildcard host patterns
+    - Unsafe deep link data handling in code
 
-OWASP Alignment: MASVS-PLATFORM-1, MASVS-PLATFORM-2
+OWASP MASTG Coverage:
+    - MASTG-TEST-0028: Testing Deep Links
+    - MASTG-TEST-0029: Testing Custom URL Schemes
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -34,13 +38,28 @@ ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def parse_manifest(manifest_path: str) -> ET.Element | None:
-    """Parse AndroidManifest.xml and return root element."""
+    """Parse AndroidManifest.xml and return root element.
+
+    Args:
+        manifest_path: Path to the AndroidManifest.xml file.
+
+    Returns:
+        Root Element of the parsed manifest, or None on error.
+    """
     try:
         ET.register_namespace("android", ANDROID_NS)
         tree = ET.parse(manifest_path)
@@ -51,12 +70,27 @@ def parse_manifest(manifest_path: str) -> ET.Element | None:
 
 
 def get_android_attr(elem: ET.Element, attr: str) -> str | None:
-    """Get Android namespace attribute value."""
+    """Get Android namespace attribute value from element.
+
+    Args:
+        elem: The XML element to query.
+        attr: The attribute name without namespace prefix.
+
+    Returns:
+        The attribute value, or None if not found.
+    """
     return elem.get(f"{{{ANDROID_NS}}}{attr}")
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -72,8 +106,13 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
                 continue
 
 
-def check_intent_filter_deep_links(activity: ET.Element, findings: list[dict]):
-    """Check activity's intent filters for deep link security issues."""
+def check_intent_filter_deep_links(activity: ET.Element, findings: list[dict]) -> None:
+    """Check activity's intent filters for deep link security issues.
+
+    Args:
+        activity: The activity XML element to analyze.
+        findings: List to append findings to (modified in place).
+    """
     activity_name = get_android_attr(activity, "name") or "Unknown"
     exported = get_android_attr(activity, "exported")
 
@@ -254,7 +293,14 @@ UNSAFE_DEEPLINK_PATTERNS = [
 
 
 def scan_code_for_unsafe_deeplink_handling(src_dir: str) -> list[dict]:
-    """Scan source code for unsafe deep link handling patterns."""
+    """Scan source code for unsafe deep link handling patterns.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for unsafe deep link handling.
+    """
     findings = []
     seen = set()
 
@@ -288,7 +334,15 @@ def scan_code_for_unsafe_deeplink_handling(src_dir: str) -> list[dict]:
 
 
 def scan_for_deep_links(manifest_path: str, src_dir: str | None = None) -> list[dict]:
-    """Main scanning function for deep link security issues."""
+    """Scan for deep link security vulnerabilities.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+        src_dir: Optional directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     # Parse manifest
@@ -345,8 +399,13 @@ def scan_for_deep_links(manifest_path: str, src_dir: str | None = None) -> list[
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -359,7 +418,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for deep link vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to AndroidManifest.xml
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <manifest.xml> <output.csv> [src_dir]", file=sys.stderr)
         sys.exit(1)

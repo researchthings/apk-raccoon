@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
+"""Scan source code and APK files for hardcoded secrets.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 2.0
-# Script to scan source code or APK for potential secrets like API keys, private keys, etc.
-# Why: Hardcoded secrets are common vulns; detection with locations enables removal or rotation.
-#
-# Improvements in v2.0:
-# - Added more secret patterns (GitHub, Slack, Stripe, Firebase, JWT)
-# - Context filtering to reduce false positives in comments/docs
-# - Entropy checking for generic high-entropy strings
-# - File extension filtering
-# - Allowlist for known test/example patterns
+Detects API keys, private keys, tokens, and credentials using regex patterns
+with context-aware filtering to reduce false positives. Supports scanning
+both decompiled source directories and raw APK archives.
+
+Features:
+    - 25+ secret patterns (AWS, GCP, GitHub, Slack, Stripe, Firebase, JWT)
+    - Context filtering to exclude matches in comments/documentation
+    - Entropy checking for generic high-entropy strings
+    - File extension filtering for binary files
+    - Allowlist for known test/example patterns
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0007: Hardcoded credentials detection
+    - MASTG-TEST-0014: API key exposure
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 2.0
+"""
 
 import sys
 import os
@@ -116,24 +124,38 @@ ALLOWLIST_VALUES = {
 MIN_ENTROPY = 3.5
 
 
-def calculate_entropy(s):
-    """Calculate Shannon entropy of a string."""
+def calculate_entropy(s: str) -> float:
+    """Calculate Shannon entropy of a string.
+
+    Args:
+        s: Input string to analyze.
+
+    Returns:
+        Entropy value in bits. Higher values indicate more randomness.
+    """
     if not s:
         return 0
     prob = [float(c) / len(s) for c in Counter(s).values()]
     return -sum(p * math.log2(p) for p in prob if p > 0)
 
 
-def is_in_comment_context(text, match_start, match_end):
-    """Check if the match appears to be in a comment or documentation context."""
-    # Get the line containing the match
+def is_in_comment_context(text: str, match_start: int, match_end: int) -> bool:
+    """Check if the match appears to be in a comment or documentation context.
+
+    Args:
+        text: Full file content.
+        match_start: Start index of the regex match.
+        match_end: End index of the regex match.
+
+    Returns:
+        True if match is in a comment/doc context (likely false positive).
+    """
     line_start = text.rfind('\n', 0, match_start) + 1
     line_end = text.find('\n', match_end)
     if line_end == -1:
         line_end = len(text)
     line = text[line_start:line_end]
 
-    # Check against comment patterns
     for pattern in COMMENT_PATTERNS:
         if re.search(pattern, line, re.IGNORECASE):
             return True
@@ -141,9 +163,15 @@ def is_in_comment_context(text, match_start, match_end):
     return False
 
 
-def is_allowlisted(matched_value):
-    """Check if the matched value is in the allowlist."""
-    # Normalize and check
+def is_allowlisted(matched_value: str) -> bool:
+    """Check if the matched value is in the allowlist.
+
+    Args:
+        matched_value: The secret value extracted from the match.
+
+    Returns:
+        True if value matches a known test/example pattern.
+    """
     normalized = matched_value.strip().lower()
     for allowed in ALLOWLIST_VALUES:
         if allowed.lower() in normalized or normalized in allowed.lower():
@@ -151,14 +179,29 @@ def is_allowlisted(matched_value):
     return False
 
 
-def should_skip_file(filename):
-    """Check if file should be skipped based on extension."""
+def should_skip_file(filename: str) -> bool:
+    """Check if file should be skipped based on extension.
+
+    Args:
+        filename: Name of the file to check.
+
+    Returns:
+        True if file has a binary/media extension that should be skipped.
+    """
     ext = os.path.splitext(filename)[1].lower()
     return ext in SKIP_EXTENSIONS
 
 
-def iter_text(src_dir, apk_path):
-    """Iterate over code files yielding (path, content) tuples."""
+def iter_text(src_dir: str, apk_path: str):
+    """Iterate over code files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -184,7 +227,17 @@ def iter_text(src_dir, apk_path):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan files for secrets and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             print("Usage: detect_secrets.py <src_dir> <out.csv> [apk_path]", file=sys.stderr)

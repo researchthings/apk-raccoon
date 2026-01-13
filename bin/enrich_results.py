@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
+"""Enrich findings with OWASP and MITRE ATT&CK mappings.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to enrich findings with OWASP and MITRE mappings based on MITRE json
-# Why: Adds context (why relevant, how to resolve) for actionable reports; dynamic MITRE search improves accuracy over static maps.
+Adds contextual information (why relevant, how to resolve) to findings
+by looking up rule IDs in OWASP YAML and searching MITRE ATT&CK JSON
+for related techniques.
 
-import sys, os, json, pandas as pd, yaml, re
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import json
+import os
+import re
+import sys
 import traceback
 
-def load_mitre(mitre_json):
-    # Why: Loads only attack-patterns from MITRE JSON; focuses on mobile techniques for relevance.
+import pandas as pd
+import yaml
+
+
+def load_mitre(mitre_json: str) -> list:
+    """Load attack-patterns from MITRE ATT&CK JSON.
+
+    Args:
+        mitre_json: Path to MITRE ATT&CK JSON file.
+
+    Returns:
+        List of technique dicts with id, name, desc fields.
+    """
     if mitre_json and os.path.isfile(mitre_json):
         try:
             j = json.load(open(mitre_json,"r",encoding="utf-8"))
@@ -34,8 +52,16 @@ def load_mitre(mitre_json):
     print("Warning: MITRE JSON not found; skipping MITRE mappings.")
     return []
 
-def match_mitre(tech_list, keywords):
-    # Why: Regex search on names/descriptions with keywords from YAML; caps hits to 5 to avoid CSV bloat.
+def match_mitre(tech_list: list, keywords: list) -> list:
+    """Match MITRE techniques by keywords from OWASP YAML.
+
+    Args:
+        tech_list: List of technique dicts from load_mitre().
+        keywords: Keywords to search for in technique names/descriptions.
+
+    Returns:
+        List of matching technique strings (max 5 to avoid CSV bloat).
+    """
     hits = []
     if not tech_list or not keywords: return hits
     for kw in keywords:
@@ -46,7 +72,17 @@ def match_mitre(tech_list, keywords):
     out = list(dict.fromkeys(hits))  # dedupe
     return out[:5]
 
-def main():
+def main() -> None:
+    """Enrich findings CSV and write to stdout.
+
+    Command line args:
+        sys.argv[1]: Path to findings CSV
+        sys.argv[2]: Path to OWASP YAML mappings
+        sys.argv[3]: Optional path to MITRE ATT&CK JSON
+
+    Raises:
+        SystemExit: If required arguments missing or enrichment fails.
+    """
     try:
         if len(sys.argv) < 3:
             raise ValueError("Usage: enrich_results.py <findings.csv> <owasp_yaml> [mitre_json]")

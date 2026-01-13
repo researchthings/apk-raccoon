@@ -1,0 +1,61 @@
+# APK Raccoon Severity Definitions
+# Used by all scanners to ensure consistent severity classification
+
+severity_levels:
+  Critical:
+    rank: 1
+    description: "Immediate exploitation risk requiring urgent remediation"
+    examples:
+      - "Hardcoded secrets/API keys in source code"
+      - "Disabled SSL/TLS certificate validation"
+      - "Empty TrustManager or HostnameVerifier"
+      - "SQL injection vulnerabilities"
+      - "Command injection vulnerabilities"
+    action: "Fix immediately before release"
+
+  High:
+    rank: 2
+    description: "Significant security weakness with clear attack vector"
+    examples:
+      - "Weak cryptography (DES, ECB mode, RC2)"
+      - "Exported components with sensitive permissions"
+      - "Cleartext HTTP traffic to non-local hosts"
+      - "WebView with JavaScript enabled and file access"
+      - "Weak PBKDF2 iterations (<10000)"
+      - "Insecure WebSocket connections (ws://)"
+    action: "Fix before production release"
+
+  Medium:
+    rank: 3
+    description: "Moderate risk requiring attention in security review"
+    examples:
+      - "Debug flags enabled (android:debuggable)"
+      - "Backup enabled without encryption"
+      - "MD5/SHA1 for security purposes"
+      - "Missing binary protections (root detection, etc.)"
+      - "Static IV in encryption"
+      - "StrictMode or debug code in production"
+      - "DWARF debug sections in native libs"
+    action: "Address before release, document if accepted"
+
+  Low:
+    rank: 4
+    description: "Minor issues or best practice violations"
+    examples:
+      - "Verbose logging statements"
+      - "Unstripped native library symbols"
+      - "Missing certificate pinning (defense in depth)"
+      - "Code appears unobfuscated"
+      - "System.out/err print statements"
+    action: "Consider fixing, lower priority"
+
+  Info:
+    rank: 5
+    description: "Informational observation, not a vulnerability"
+    examples:
+      - "FLAG_SECURE protection detected (positive)"
+      - "Root detection present (positive)"
+      - "Certificate pinning implemented (positive)"
+      - "Split APK detected (metadata)"
+      - "Architecture information"
+    action: "No action required, documentation only"

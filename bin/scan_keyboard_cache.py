@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
-"""
-Keyboard Cache Security Scanner v1.0
+"""Scan for Keyboard Cache data leakage vulnerabilities.
 
 Detects input fields that may cache sensitive data in keyboard dictionaries.
-Keyboards often cache typed text for autocomplete/prediction, which can leak
-sensitive data like passwords, credit cards, or PII.
+Keyboards often cache typed text for autocomplete/prediction.
 
-Checks for:
-- Password fields without textNoSuggestions flag
-- Sensitive EditText without proper inputType
-- Missing android:inputType attributes on sensitive fields
-- Custom keyboard usage patterns
+Checks:
+    - Password fields without textNoSuggestions flag
+    - Sensitive EditText without proper inputType
+    - Missing android:inputType attributes on sensitive fields
+    - Custom keyboard usage patterns
 
-References:
-- https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0006/
-- https://developer.android.com/reference/android/text/InputType
-- https://cwe.mitre.org/data/definitions/524.html
+OWASP MASTG Coverage:
+    - MASTG-TEST-0006: Testing for Sensitive Data in Keyboard Cache
 
-OWASP Alignment: MASVS-STORAGE-2
-CWE: CWE-524 (Use of Cache Containing Sensitive Information)
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -35,13 +32,29 @@ CSV_FIELDNAMES = ["Source", "RuleID", "Title", "Location", "Evidence", "Severity
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str, extensions: set[str]) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+        extensions: Set of file extensions to include (e.g., {'.java', '.xml'}).
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -172,7 +185,14 @@ SMALI_PATTERNS = [
 
 
 def scan_for_keyboard_cache(src_dir: str) -> list[dict]:
-    """Scan for keyboard cache vulnerabilities."""
+    """Scan for keyboard cache vulnerabilities.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
     seen = set()
 
@@ -278,8 +298,13 @@ def scan_for_keyboard_cache(src_dir: str) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -292,7 +317,16 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for keyboard cache vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv>", file=sys.stderr)
         sys.exit(1)

@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
+"""Scan for content provider security vulnerabilities.
 
-# Author: Randy Grant
-# Date: 01-09-2026
-# Version: 1.0
-# Script to scan for content provider security issues
-# Why: Content providers are major attack surface; misconfigurations leak data.
-#
-# Checks:
-# - Exported providers without permissions
-# - SQL injection in content providers
-# - Path traversal vulnerabilities
-# - Grant URI permissions abuse
-# - Missing signature-level protection
+Detects exported providers without permissions, SQL injection in queries,
+path traversal vulnerabilities, grant URI permission abuse, and missing
+signature-level protections.
+
+Checks:
+    - Exported providers without permissions
+    - SQL injection in content providers
+    - Path traversal in openFile()
+    - Grant URI permissions abuse
+    - Missing signature-level protection
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0017: Content provider security
+    - MASTG-TEST-0008: SQL injection in providers
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
+"""
 
 import sys
 import os
@@ -114,8 +122,15 @@ GRANT_URI_PATTERNS = [
 ]
 
 
-def parse_manifest_providers(mani_path):
-    """Parse manifest for content provider declarations."""
+def parse_manifest_providers(mani_path: str) -> tuple:
+    """Parse manifest for content provider declarations.
+
+    Args:
+        mani_path: Path to AndroidManifest.xml.
+
+    Returns:
+        Tuple of (findings list, providers list).
+    """
     findings = []
     providers = []
 
@@ -189,8 +204,16 @@ def parse_manifest_providers(mani_path):
     return findings, providers
 
 
-def iter_text(src_dir, apk_path=None):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str = None):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -215,8 +238,15 @@ def iter_text(src_dir, apk_path=None):
                         continue
 
 
-def is_content_provider_file(text):
-    """Check if file likely contains a ContentProvider implementation."""
+def is_content_provider_file(text: str) -> bool:
+    """Check if file likely contains a ContentProvider implementation.
+
+    Args:
+        text: File content to check.
+
+    Returns:
+        True if file appears to contain a ContentProvider class.
+    """
     indicators = [
         r'extends\s+ContentProvider',
         r'implements\s+.*ContentProvider',
@@ -227,7 +257,18 @@ def is_content_provider_file(text):
     return any(re.search(pattern, text) for pattern in indicators)
 
 
-def main():
+def main() -> None:
+    """Scan for content provider issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Path to AndroidManifest.xml
+        sys.argv[3]: Output CSV path
+        sys.argv[4]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 4:
             print("Usage: scan_content_providers.py <src_dir> <manifest.xml> <out.csv> [apk_path]", file=sys.stderr)

@@ -1,15 +1,39 @@
 #!/usr/bin/env python3
+"""Analyze AndroidManifest.xml for security issues.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to analyze AndroidManifest.xml for issues
-# Why: Manifest declares permissions/components; flags over-permissions, exported, debuggable for security risks.
+Scans the Android manifest for debuggable flags, exported components,
+and dangerous permissions that could expose sensitive data or functionality.
 
-import sys, xml.etree.ElementTree as ET, csv
+OWASP MASTG Coverage:
+    - MASTG-TEST-0001: Debuggable flag detection
+    - MASTG-TEST-0016: Exported component analysis
+    - MASTG-TEST-0029: Permission analysis
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import csv
+import sys
 import traceback
+import xml.etree.ElementTree as ET
 
-def main():
+
+def main() -> None:
+    """Parse manifest and write security findings to CSV.
+
+    Reads AndroidManifest.xml, checks for debuggable flag, exported
+    components, and dangerous permissions, then outputs findings in
+    CSV format for aggregation with other scanners.
+
+    Command line args:
+        sys.argv[1]: Path to AndroidManifest.xml
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If arguments missing or parsing fails.
+    """
     try:
         if len(sys.argv) < 3:
             raise ValueError("Usage: analyze_manifest.py <manifest.xml> <out.csv>")

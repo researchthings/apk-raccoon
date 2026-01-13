@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""
-Broadcast Receiver Security Scanner v1.0
+"""Scan for Broadcast Receiver security vulnerabilities.
 
-Detects insecure broadcast receiver configurations that can lead to:
-- Information disclosure via exported receivers
-- Denial of service attacks
-- Privilege escalation via sticky broadcasts
-- Ordered broadcast hijacking
+Detects insecure broadcast receiver configurations that can lead to
+information disclosure, denial of service, and privilege escalation.
 
-References:
-- https://developer.android.com/privacy-and-security/risks/insecure-broadcast-receiver
-- https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0029/
-- https://developer.android.com/develop/background-work/background-tasks/broadcasts
+Checks:
+    - Exported receivers without permission protection
+    - High priority receivers (ordered broadcast hijacking)
+    - Sticky broadcasts (deprecated and insecure)
+    - Sensitive broadcast action handlers
+    - Dynamic receiver registration issues
 
-OWASP Alignment: MASVS-PLATFORM-1, MASVS-PLATFORM-2
+OWASP MASTG Coverage:
+    - MASTG-TEST-0029: Testing for Insecure Broadcast Receivers
+    - MASTG-TEST-0030: Testing Broadcast Senders
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -58,13 +62,28 @@ DANGEROUS_RECEIVER_PERMISSIONS = {
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def parse_manifest(manifest_path: str) -> ET.Element | None:
-    """Parse AndroidManifest.xml and return root element."""
+    """Parse AndroidManifest.xml and return root element.
+
+    Args:
+        manifest_path: Path to the AndroidManifest.xml file.
+
+    Returns:
+        Root Element of the parsed manifest, or None on error.
+    """
     try:
         ET.register_namespace("android", ANDROID_NS)
         tree = ET.parse(manifest_path)
@@ -75,12 +94,27 @@ def parse_manifest(manifest_path: str) -> ET.Element | None:
 
 
 def get_android_attr(elem: ET.Element, attr: str) -> str | None:
-    """Get Android namespace attribute value."""
+    """Get Android namespace attribute value from element.
+
+    Args:
+        elem: The XML element to query.
+        attr: The attribute name without namespace prefix.
+
+    Returns:
+        The attribute value, or None if not found.
+    """
     return elem.get(f"{{{ANDROID_NS}}}{attr}")
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -96,8 +130,13 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
                 continue
 
 
-def check_receiver_security(receiver: ET.Element, findings: list[dict]):
-    """Check a broadcast receiver for security issues."""
+def check_receiver_security(receiver: ET.Element, findings: list[dict]) -> None:
+    """Check a broadcast receiver element for security issues.
+
+    Args:
+        receiver: The receiver XML element to analyze.
+        findings: List to append findings to (modified in place).
+    """
     name = get_android_attr(receiver, "name") or "Unknown"
     exported = get_android_attr(receiver, "exported")
     permission = get_android_attr(receiver, "permission")
@@ -189,8 +228,13 @@ def check_receiver_security(receiver: ET.Element, findings: list[dict]):
             })
 
 
-def check_permissions_for_broadcasts(root: ET.Element, findings: list[dict]):
-    """Check for dangerous broadcast-related permissions."""
+def check_permissions_for_broadcasts(root: ET.Element, findings: list[dict]) -> None:
+    """Check for dangerous broadcast-related permissions in manifest.
+
+    Args:
+        root: Root element of the parsed manifest.
+        findings: List to append findings to (modified in place).
+    """
     for uses_perm in root.findall("uses-permission"):
         perm_name = get_android_attr(uses_perm, "name")
         if perm_name in DANGEROUS_RECEIVER_PERMISSIONS:
@@ -290,7 +334,14 @@ BROADCAST_CODE_PATTERNS = [
 
 
 def scan_code_for_broadcast_issues(src_dir: str) -> list[dict]:
-    """Scan source code for broadcast security issues."""
+    """Scan source code for broadcast security issues.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for broadcast security issues.
+    """
     findings = []
     seen = set()
 
@@ -323,8 +374,13 @@ def scan_code_for_broadcast_issues(src_dir: str) -> list[dict]:
     return findings
 
 
-def check_target_sdk_broadcast(root: ET.Element, findings: list[dict]):
-    """Check target SDK for broadcast-related behavior changes."""
+def check_target_sdk_broadcast(root: ET.Element, findings: list[dict]) -> None:
+    """Check target SDK for broadcast-related behavior changes.
+
+    Args:
+        root: Root element of the parsed manifest.
+        findings: List to append findings to (modified in place).
+    """
     uses_sdk = root.find("uses-sdk")
     if uses_sdk is not None:
         target_sdk = get_android_attr(uses_sdk, "targetSdkVersion")
@@ -358,7 +414,15 @@ def check_target_sdk_broadcast(root: ET.Element, findings: list[dict]):
 
 
 def scan_for_broadcasts(manifest_path: str, src_dir: str | None = None) -> list[dict]:
-    """Main scanning function for broadcast receiver security."""
+    """Scan for broadcast receiver security vulnerabilities.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+        src_dir: Optional directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     # Parse manifest
@@ -428,8 +492,13 @@ def scan_for_broadcasts(manifest_path: str, src_dir: str | None = None) -> list[
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -442,7 +511,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for broadcast vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to AndroidManifest.xml
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <manifest.xml> <output.csv> [src_dir]", file=sys.stderr)
         sys.exit(1)

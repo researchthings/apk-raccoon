@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
+"""Scan for sensitive data logging and insecure storage practices.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 2.0
-# Script to scan for sensitive logging and weak storage practices in Android code
-# Why: Identifies risks like leaked secrets in logs or insecure storage.
-#
-# Improvements in v2.0:
-# - More specific sensitive logging detection (checks actual logged content)
-# - Reduced false positives for SharedPreferences (context-aware)
-# - Added file type filtering
-# - Better evidence extraction
+Detects credentials in logs, world-readable storage, unencrypted SharedPreferences,
+external storage usage, and sensitive data in notifications/databases.
+
+Features (v2.0):
+    - Context-aware logging detection (checks actual logged content)
+    - Encryption context checking to reduce false positives
+    - External storage and database pattern detection
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0002: Sensitive data logging
+    - MASTG-TEST-0004: Third-party data sharing
+    - MASTG-TEST-0005: Notification data leakage
+    - MASTG-TEST-0200-0207: External storage security
+    - MASTG-TEST-0304-0306: Database security
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 2.0
+"""
 
 import sys
 import os
@@ -50,14 +59,78 @@ SENSITIVE_LOG_PATTERNS = [
 ]
 
 # =============================================================================
+# Notification patterns (MASTG-TEST-0005)
+# =============================================================================
+
+NOTIFICATION_SENSITIVE_PATTERNS = [
+    # Notification with sensitive content
+    (r'(?i)(?:setContentTitle|setContentText|setSubText)\s*\([^)]*(?:password|token|secret|ssn|credit|pin)[^)]*\)', "High", "Sensitive data in notification content"),
+    (r'(?i)NotificationCompat\.Builder[^;]*(?:setContentTitle|setContentText)[^;]*(?:email|phone|ssn|address)', "High", "PII in notification"),
+    (r'(?i)setTicker\s*\([^)]*(?:password|secret|token|key|credential)[^)]*\)', "High", "Secret value in notification ticker"),
+    (r'(?i)Notification\s*\([^)]*(?:contentTitle|contentText)\s*[:=][^)]*(?:password|token|secret)', "High", "Sensitive data in Notification constructor"),
+    (r'(?i)BigTextStyle\s*\(\)[^;]*bigText\s*\([^)]*(?:password|token|email|ssn)', "High", "Sensitive data in expanded notification"),
+]
+
+# =============================================================================
+# Third-party data sharing patterns (MASTG-TEST-0004)
+# =============================================================================
+
+THIRDPARTY_DATA_PATTERNS = [
+    # Sending sensitive data to third parties
+    (r'(?i)(?:sendData|postData|uploadData|transmit)\s*\([^)]*(?:email|phone|ssn|location|userId|password)', "High", "User data sent to third party"),
+    (r'(?i)(?:Firebase|Amplitude|Mixpanel|Analytics).*(?:log|track|send|set)\s*\([^)]*(?:email|phone|name|address)', "Medium", "Sensitive data sent to analytics"),
+    (r'(?i)Gson\s*\(\)\s*\.toJson\s*\([^)]*(?:password|token|secret|ssn)', "High", "Sensitive data serialized with Gson"),
+    (r'(?i)JSONObject[^;]*put\s*\([^)]*(?:password|token|secret|ssn|credit)', "High", "Sensitive data in JSON object"),
+    (r'(?i)(?:retrofit|okhttp|HttpClient)[^;]*(?:POST|PUT)[^;]*(?:email|phone|ssn|password)', "Medium", "Potentially sensitive data in HTTP request"),
+]
+
+# =============================================================================
 # Storage patterns
 # =============================================================================
 
 # World-readable preferences (deprecated and dangerous)
 WORLD_READABLE_PATTERN = r'\b(MODE_WORLD_READABLE|MODE_WORLD_WRITEABLE)\b'
 
-# External storage usage
-EXTERNAL_STORAGE_PATTERN = r'Environment\.getExternalStorage(?:Directory|PublicDirectory)\s*\('
+# External storage usage patterns (MASTG-TEST-0200-0207)
+EXTERNAL_STORAGE_PATTERNS = [
+    (r'Environment\.getExternalStorage(?:Directory|PublicDirectory)\s*\(', "Medium", "External storage directory access"),
+    (r'(?i)getExternalFilesDir\s*\(', "Medium", "External files directory access"),
+    (r'(?i)getExternalCacheDir\s*\(', "Medium", "External cache directory access"),
+    (r'(?i)new\s+File\s*\(\s*["\'](?:/sdcard|/storage/emulated|/mnt/sdcard)', "High", "Hardcoded external storage path"),
+    (r'(?i)FileOutputStream\s*\([^)]*(?:getExternalStorage|/sdcard|/storage)', "High", "Writing to external storage"),
+    (r'(?i)FileWriter\s*\([^)]*(?:getExternalStorage|/sdcard|/storage)', "High", "Writing to external storage with FileWriter"),
+    (r'(?i)requestLegacyExternalStorage\s*=\s*["\']?true', "Medium", "Requesting legacy external storage access"),
+    (r'(?i)MANAGE_EXTERNAL_STORAGE', "Medium", "Requesting broad external storage permission"),
+    (r'(?i)MediaStore\.(?:Images|Video|Audio)\.Media\.EXTERNAL_CONTENT_URI', "Low", "MediaStore external content access"),
+]
+
+# =============================================================================
+# Database patterns (MASTG-TEST-0304-0306)
+# =============================================================================
+
+DATABASE_SENSITIVE_PATTERNS = [
+    # SQLite with sensitive data
+    (r'(?i)(?:insert|update|execSQL)\s*\([^)]*(?:password|token|secret|ssn|credit|pin)', "High", "Sensitive data in SQLite operation"),
+    (r'(?i)rawQuery\s*\([^)]*SELECT[^)]*(?:password|token|secret|ssn)', "High", "Querying sensitive data from database"),
+    (r'(?i)SQLiteDatabase\.(?:openDatabase|openOrCreateDatabase)\s*\([^)]*(?:password|key|secret)', "High", "Database opened with sensitive key in path"),
+    # Room Database with sensitive entities
+    (r'(?i)@(?:Entity|ColumnInfo)[^)]*(?:password|token|secret|ssn|credit)', "High", "Room entity storing sensitive field"),
+    (r'(?i)@Query\s*\([^)]*SELECT[^)]*(?:password|token|secret|ssn)', "High", "Room query accessing sensitive columns"),
+    # Realm with sensitive fields
+    (r'(?i)RealmObject[^}]*(?:password|token|secret|ssn)', "High", "Realm object with sensitive field"),
+]
+
+# =============================================================================
+# Temporary file patterns (MASTG-TEST-0304-0306)
+# =============================================================================
+
+TEMP_FILE_PATTERNS = [
+    (r'(?i)File\.createTempFile\s*\([^)]*(?:password|token|secret|key|credential)', "High", "Temp file with sensitive name"),
+    (r'(?i)File\.createTempFile\s*\(', "Low", "Temporary file creation (verify no sensitive data)"),
+    (r'(?i)getCacheDir\s*\(\)[^;]*(?:password|token|secret|credential)', "High", "Sensitive data in cache directory"),
+    (r'(?i)new\s+File\s*\([^)]*\.(?:tmp|temp|cache)["\']?\s*\)', "Low", "Temporary file pattern"),
+    (r'(?i)BufferedWriter[^;]*createTempFile', "Medium", "Writing to temporary file"),
+]
 
 # Sensitive data in SharedPreferences without encryption context
 SENSITIVE_PREFS_KEYS = [
@@ -66,8 +139,17 @@ SENSITIVE_PREFS_KEYS = [
 ]
 
 
-def check_encryption_context(text, match_start, match_end):
-    """Check if encryption is used in the context of the match."""
+def check_encryption_context(text: str, match_start: int, match_end: int) -> bool:
+    """Check if encryption is used in the context of the match.
+
+    Args:
+        text: Full file content.
+        match_start: Start index of the match.
+        match_end: End index of the match.
+
+    Returns:
+        True if encryption indicators found in surrounding context.
+    """
     context_start = max(0, match_start - 300)
     context_end = min(len(text), match_end + 300)
     context = text[context_start:context_end].lower()
@@ -81,8 +163,16 @@ def check_encryption_context(text, match_start, match_end):
     return any(ind in context for ind in encryption_indicators)
 
 
-def iter_text(src_dir, apk_path=None):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str = None):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -108,7 +198,17 @@ def iter_text(src_dir, apk_path=None):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan for storage/logging issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             print("Usage: scan_storage_logging.py <src_dir> <out.csv> [apk_path]", file=sys.stderr)
@@ -175,18 +275,76 @@ def main():
                             "HowFound": "Regex scan with context check"
                         })
 
-            # Check for external storage usage
-            for m in re.finditer(EXTERNAL_STORAGE_PATTERN, text):
-                snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
-                rows.append({
-                    "Source": "logging_storage",
-                    "RuleID": "EXT_STORAGE_WRITE",
-                    "Title": "External storage usage (publicly accessible)",
-                    "Location": str(path),
-                    "Evidence": snippet[:200],
-                    "Severity": "Medium",
-                    "HowFound": "Regex scan"
-                })
+            # Check for external storage usage (MASTG-TEST-0200-0207)
+            for pattern, severity, desc in EXTERNAL_STORAGE_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "logging_storage",
+                        "RuleID": "EXT_STORAGE_WRITE",
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
+
+            # Check for notification sensitive data (MASTG-TEST-0005)
+            for pattern, severity, desc in NOTIFICATION_SENSITIVE_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "logging_storage",
+                        "RuleID": "NOTIF_SENSITIVE_DATA",
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
+
+            # Check for third-party data sharing (MASTG-TEST-0004)
+            for pattern, severity, desc in THIRDPARTY_DATA_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "logging_storage",
+                        "RuleID": "THIRDPARTY_DATA_SHARE",
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
+
+            # Check for database sensitive data (MASTG-TEST-0304-0306)
+            for pattern, severity, desc in DATABASE_SENSITIVE_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    if not check_encryption_context(text, m.start(), m.end()):
+                        snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                        rows.append({
+                            "Source": "logging_storage",
+                            "RuleID": "DB_SENSITIVE_DATA",
+                            "Title": desc,
+                            "Location": str(path),
+                            "Evidence": snippet[:200],
+                            "Severity": severity,
+                            "HowFound": "Regex scan with context check"
+                        })
+
+            # Check for temporary file issues (MASTG-TEST-0304-0306)
+            for pattern, severity, desc in TEMP_FILE_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "logging_storage",
+                        "RuleID": "TEMP_FILE_SENSITIVE",
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
 
         # Write output
         with open(out, "w", newline="", encoding="utf-8") as f:

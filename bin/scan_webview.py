@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
+"""Scan for WebView security misconfigurations.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to check WebView SSL configurations in code
-# Why: Insecure WebView (e.g., ignoring SSL errors) risks MiTM; flags for proper error handling.
+Detects insecure WebView settings including SSL error bypass, JavaScript
+enablement, and file access permissions that could lead to MiTM or XSS attacks.
 
-import sys, os, re, csv, zipfile
+OWASP MASTG Coverage:
+    - MASTG-TEST-0024: WebView SSL validation
+    - MASTG-TEST-0025: WebView JavaScript security
+    - MASTG-TEST-0026: WebView file access
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import csv
+import os
+import re
+import sys
 import traceback
+import zipfile
 
 WEBVIEW_PATTERNS = [
   ("WEBVIEW_IGNORE_SSL", r'onReceivedSslError.*proceed\(\)', "High"),  # Why: Ignores cert errors.
@@ -15,8 +27,16 @@ WEBVIEW_PATTERNS = [
   ("WEBVIEW_FILE_ACCESS", r'setAllowFileAccess\(true\)', "Medium"),  # Why: Allows file scheme access.
 ]
 
-def iter_text(src_dir, apk_path):
-    # Similar to other scanners
+def iter_text(src_dir: str, apk_path: str):
+    """Iterate over code files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -37,7 +57,17 @@ def iter_text(src_dir, apk_path):
                         print(f"Warning: Failed to read ZIP entry {zi.filename}: {str(e)}")
                         continue
 
-def main():
+def main() -> None:
+    """Scan files for WebView issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             raise ValueError("Usage: check_webview_security.py <src_dir> <out.csv> [apk_path]")

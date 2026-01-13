@@ -1,231 +1,277 @@
 rules:
   MANI_DEBUGGABLE:
     owasp: [MASVS-PLATFORM-1, MSTG-PLATFORM-2]
+    mastg_tests: [MASTG-TEST-0039, MASTG-TEST-0226]
     mitre_keywords: [debug, reverse engineering, tamper]
     why: Enabling debuggable mode in production allows attackers to attach debuggers, inspect memory, and reverse engineer the app, leading to potential extraction of sensitive data or IP.
     how: Set android:debuggable="false" in the AndroidManifest.xml for release builds. Use build variants in build.gradle to control this flag.
   MANI_EXPORTED:
     owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0029]
     mitre_keywords: [exposed component, inter-app communication]
     why: Exported components without proper protections can be invoked by malicious apps, leading to unauthorized actions, data leakage, or denial of service.
     how: Set android:exported="false" for components that don't need to be public. If exposure is necessary, protect with custom permissions (android:permission) and validate intents.
   MANI_DANGEROUS_PERM:
     owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mastg_tests: [MASTG-TEST-0024, MASTG-TEST-0254]
     mitre_keywords: [permission escalation, over-privileged]
     why: Requesting dangerous permissions increases the app's attack surface and may expose sensitive user data if not handled securely.
     how: Minimize permissions in the manifest. Use runtime permission requests for dangerous permissions. Regularly audit and justify each permission.
   SECRET_AWS_ACCESS_KEY:
     owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0212]
     mitre_keywords: [hardcoded credential, secret leakage]
     why: Hardcoded AWS access keys can be easily extracted from the APK via reverse engineering, allowing unauthorized access to cloud resources.
     how: Store credentials securely using Android Keystore or fetch them dynamically from a secure backend. Avoid committing secrets to code repositories.
   SECRET_AWS_SECRET:
     owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0212]
     mitre_keywords: [hardcoded secret, credential exposure]
     why: Hardcoded AWS secrets compromise cloud security, enabling attackers to impersonate the app and access sensitive data or services.
     how: Use AWS IAM roles or temporary credentials via STS. Integrate with secure vault services like AWS Secrets Manager for runtime retrieval.
   SECRET_GOOGLE_API_KEY:
     owasp: [MASVS-STORAGE-1, MSTG-STORAGE-2]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0212]
     mitre_keywords: [api key leakage, service abuse]
     why: Exposed Google API keys can lead to quota exhaustion, unauthorized API usage, or billing attacks if extracted from the app.
     how: Restrict API keys in Google Cloud Console to specific apps/packages. Use proxy servers to hide keys or fetch them securely at runtime.
   SECRET_PRIVATE_KEY:
     owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mastg_tests: [MASTG-TEST-0015, MASTG-TEST-0212]
     mitre_keywords: [private key exposure, decryption]
     why: Hardcoded private keys allow attackers to decrypt sensitive data or forge signatures, compromising encryption and authenticity.
     how: Generate keys at runtime or store in Android Keystore. Use hardware-backed storage for high-security needs.
   SECRET_BASIC_AUTH:
     owasp: [MASVS-AUTH-2, MSTG-AUTH-1]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0212]
     mitre_keywords: [basic auth, credential interception]
     why: Basic auth credentials in code are easily reversible and vulnerable to interception if transmitted over networks.
     how: Switch to token-based auth (e.g., OAuth). If needed, derive credentials dynamically and transmit over HTTPS only.
   CRYPTO_ECB_MODE:
     owasp: [MASVS-CRYPTO-1, MSTG-CRYPTO-3]
+    mastg_tests: [MASTG-TEST-0014, MASTG-TEST-0232]
     mitre_keywords: [weak encryption, pattern leakage]
     why: ECB mode doesn't hide data patterns, making it insecure for encrypting similar or structured data, leading to information leakage.
     how: Use authenticated modes like GCM or CCM. Update Cipher.getInstance to "AES/GCM/NoPadding".
   CRYPTO_DES:
     owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0014, MASTG-TEST-0221]
     mitre_keywords: [deprecated crypto, brute force]
     why: DES is obsolete with a small key size, vulnerable to brute-force attacks and not suitable for modern security needs.
     how: Migrate to AES with at least 128-bit keys. Refactor code to use stronger algorithms.
   CRYPTO_RC2:
     owasp: [MASVS-CRYPTO-2, MSTG-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0014, MASTG-TEST-0221]
     mitre_keywords: [weak cipher, key recovery]
     why: RC2 has known vulnerabilities and weak key strengths, making it unsuitable for protecting sensitive data.
     how: Replace with modern ciphers like AES. Ensure key sizes meet current standards (e.g., 256-bit).
   CRYPTO_NPADDING:
     owasp: [MASVS-CRYPTO-4, MSTG-CRYPTO-4]
+    mastg_tests: [MASTG-TEST-0014]
     mitre_keywords: [padding oracle, no padding]
     why: No padding can lead to length extension attacks or require manual padding, increasing error risk.
     how: Use standard padding like PKCS7. Change to modes that include padding or authenticated encryption.
   CRYPTO_MD5:
     owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mastg_tests: [MASTG-TEST-0014]
     mitre_keywords: [collision attack, hash weakness]
     why: MD5 is collision-prone and not secure for integrity checks or passwords, allowing forgery.
     how: Use SHA-256 or better for hashing. For passwords, use bcrypt or Argon2.
   CRYPTO_SHA1:
     owasp: [MASVS-CRYPTO-5, MSTG-CRYPTO-5]
+    mastg_tests: [MASTG-TEST-0014]
     mitre_keywords: [collision, deprecated hash]
     why: SHA1 has practical collision attacks, compromising integrity in signatures or certificates.
     how: Upgrade to SHA-256/SHA-3. Update MessageDigest instances accordingly.
   CRYPTO_STATIC_IV:
     owasp: [MASVS-CRYPTO-3, MSTG-CRYPTO-2]
+    mastg_tests: [MASTG-TEST-0013, MASTG-TEST-0309, MASTG-TEST-0310]
     mitre_keywords: [iv reuse, predictability]
     why: Static IVs make encryption deterministic, allowing pattern analysis and replay attacks.
     how: Generate random IVs per encryption. Use SecureRandom and store IV with ciphertext.
   LOG_SENSITIVE:
     owasp: [MASVS-STORAGE-2, MSTG-STORAGE-3]
+    mastg_tests: [MASTG-TEST-0003, MASTG-TEST-0203, MASTG-TEST-0231]
     mitre_keywords: [log leakage, sensitive data]
     why: Logging sensitive info can persist in device logs, accessible to attackers or other apps.
     how: Mask or avoid logging PII. Use logging levels and build config to strip in release.
   PREFS_WORLD_READABLE:
     owasp: [MASVS-STORAGE-1, MSTG-STORAGE-1]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0207]
     mitre_keywords: [shared storage, data exposure]
     why: World-readable prefs allow other apps to read sensitive data, violating isolation.
     how: Use MODE_PRIVATE. Encrypt sensitive prefs with EncryptedSharedPreferences.
   PREFS_PLAINTEXT_WRITE:
     owasp: [MASVS-STORAGE-4, MSTG-STORAGE-4]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0287]
     mitre_keywords: [plaintext storage, extraction]
     why: Plaintext storage of data in prefs is extractable from rooted devices or backups.
     how: Use EncryptedSharedPreferences from AndroidX Security library.
   EXT_STORAGE_WRITE:
     owasp: [MASVS-STORAGE-5, MSTG-STORAGE-5]
+    mastg_tests: [MASTG-TEST-0001, MASTG-TEST-0200, MASTG-TEST-0201, MASTG-TEST-0202]
     mitre_keywords: [external storage, public data]
     why: External storage is publicly accessible, risking data exposure if not protected.
     how: Use internal storage or scoped storage. Encrypt files if external is needed.
   WEBVIEW_IGNORE_SSL:
     owasp: [MASVS-NETWORK-3, MSTG-NETWORK-3]
+    mastg_tests: [MASTG-TEST-0021, MASTG-TEST-0284]
     mitre_keywords: [ssl ignore, mitm]
     why: Ignoring SSL errors allows man-in-the-middle attacks, compromising data integrity.
     how: Handle SSL errors properly; do not call proceed(). Use cert pinning.
   WEBVIEW_JS_ENABLED:
     owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mastg_tests: [MASTG-TEST-0031]
     mitre_keywords: [js injection, xss]
     why: Enabling JS in WebView without controls risks XSS if loading untrusted content.
     how: Disable JS if not needed. Use addJavascriptInterface cautiously with @JavascriptInterface.
   WEBVIEW_FILE_ACCESS:
     owasp: [MASVS-PLATFORM-7, MSTG-PLATFORM-7]
+    mastg_tests: [MASTG-TEST-0032, MASTG-TEST-0252, MASTG-TEST-0253]
     mitre_keywords: [file access, local file inclusion]
     why: Allowing file access in WebView can lead to local file inclusion vulnerabilities.
     how: Set setAllowFileAccess(false). Avoid loading local files unless sanitized.
   NET_CLEARTEXT:
     owasp: [MASVS-NETWORK-1, MSTG-NETWORK-1]
+    mastg_tests: [MASTG-TEST-0019, MASTG-TEST-0235, MASTG-TEST-0236, MASTG-TEST-0237]
     mitre_keywords: [cleartext, sniffing]
     why: Cleartext traffic is interceptable, leading to data theft on open networks.
     how: Set android:usesCleartextTraffic="false". Enforce HTTPS in network security config.
   NET_HTTP:
     owasp: [MASVS-NETWORK-2, MSTG-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0019, MASTG-TEST-0233, MASTG-TEST-0238]
     mitre_keywords: [http, unencrypted]
     why: HTTP connections are unencrypted, vulnerable to eavesdropping and tampering.
     how: Migrate to HTTPS. Redirect HTTP to HTTPS in code if needed.
   NET_NO_PINNING:
     owasp: [MASVS-NETWORK-4, MSTG-NETWORK-4]
+    mastg_tests: [MASTG-TEST-0022, MASTG-TEST-0242, MASTG-TEST-0243, MASTG-TEST-0244]
     mitre_keywords: [trust manager, certificate pinning]
     why: Custom trust managers without pinning allow rogue certificates in MiTM attacks.
     how: Implement HPKP or certificate pinning with TrustKit or custom TrustManager.
   NET_INSECURE_URL:
     owasp: [MASVS-NETWORK-2, MSTG-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0019, MASTG-TEST-0233]
     mitre_keywords: [insecure url, http link]
     why: Hardcoded HTTP URLs bypass network security configs, risking unencrypted comms.
     how: Replace with HTTPS URLs. Use HSTS for domains.
   SBOM_UNKNOWN:
     owasp: [MASVS-RESILIENCE-4, MSTG-RESILIENCE-4]
+    mastg_tests: [MASTG-TEST-0042, MASTG-TEST-0272, MASTG-TEST-0274]
     mitre_keywords: [supply chain, vuln lib]
     why: Vulnerable libraries in SBOM can be exploited, leading to app compromise.
     how: Update libraries to patched versions. Monitor with dependency-check tools.
   IPC_EXPORTED:
     owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0007, MASTG-TEST-0029]
     mitre_keywords: [ipc, exposed]
     why: Exported IPC endpoints allow inter-app attacks if not secured.
     how: Validate senders in onReceive/onBind. Use signatures for permissions.
   DYNAMIC_NO_DEVICE:
     owasp: []
+    mastg_tests: []
     mitre_keywords: []
     why: No device available for dynamic testing; static results only.
     how: Connect a device/emulator and re-run with adb enabled.
   DYNAMIC_ADB_ERROR:
     owasp: []
+    mastg_tests: []
     mitre_keywords: []
     why: ADB probe failed; possibly no device or config issue.
     how: Ensure adb is running and device is connected/authorized.
   AUTH_WEAK_PASSWORD:
     owasp: [MASVS-AUTH-1, MSTG-AUTH-2]
+    mastg_tests: []
     mitre_keywords: [weak auth, brute force]
     why: Weak password policies allow easy guessing or cracking.
     how: Enforce min length 8, complexity (upper/lower/num/special). Use biometrics.
   AUTH_NO_SESSION:
     owasp: [MASVS-AUTH-3, MSTG-AUTH-3]
+    mastg_tests: []
     mitre_keywords: [session hijack, replay]
     why: Lack of session management enables replay or fixation attacks.
     how: Use secure tokens with expiration. Implement logout and invalidation.
   AUTH_HTTP_LOGIN:
     owasp: [MASVS-AUTH-4, MSTG-AUTH-1]
+    mastg_tests: [MASTG-TEST-0019]
     mitre_keywords: [http auth, credential sniff]
     why: HTTP for login transmits credentials in cleartext.
     how: Force HTTPS for auth endpoints. Use TLS 1.3+.
   AUTH_IDOR:
     owasp: [MASVS-AUTH-5, MSTG-AUTH-4]
+    mastg_tests: []
     mitre_keywords: [idor, access control]
     why: Insecure direct object references allow unauthorized resource access.
     how: Validate user ownership on server-side. Use indirect references.
   AUTH_EXPORTED_NO_PERM:
     owasp: [MASVS-PLATFORM-3, MSTG-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0029]
     mitre_keywords: [exported no perm, unauthorized invoke]
     why: Exported components without permissions are invocable by any app.
     how: Add android:permission to restrict access. Use signature level for sensitive.
   INJ_SQL:
     owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mastg_tests: [MASTG-TEST-0025]
     mitre_keywords: [sql injection, database]
     why: Dynamic SQL allows injection, leading to data exfil or modification.
     how: Use prepared statements or Room ORM. Sanitize inputs.
   INJ_COMMAND:
     owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mastg_tests: [MASTG-TEST-0025]
     mitre_keywords: [command injection, shell]
     why: Unsanitized exec allows arbitrary command execution.
     how: Avoid Runtime.exec with user input. Use ProcessBuilder with validation.
   INJ_XSS:
     owasp: [MASVS-PLATFORM-6, MSTG-PLATFORM-6]
+    mastg_tests: [MASTG-TEST-0025, MASTG-TEST-0027]
     mitre_keywords: [xss, webview]
     why: XSS in WebView can steal data or execute JS in app context.
     how: Sanitize inputs to loadUrl/loadData. Disable JS if possible.
   INJ_PATH_TRAVERSAL:
     owasp: [MASVS-STORAGE-6, MSTG-STORAGE-6]
+    mastg_tests: [MASTG-TEST-0025]
     mitre_keywords: [path traversal, file access]
     why: Unsanitized file paths allow reading arbitrary files.
     how: Canonicalize paths with File.getCanonicalPath. Restrict to app dirs.
   INJ_NO_VALIDATION:
     owasp: [MASVS-PLATFORM-5, MSTG-PLATFORM-5]
+    mastg_tests: [MASTG-TEST-0002]
     mitre_keywords: [input validation, exploit]
     why: No input validation allows malformed data to crash or exploit app.
     how: Validate all inputs (intents, params) with patterns/whitelists.
   BIN_NO_ROOT_DETECT:
     owasp: [MASVS-RESILIENCE-1, MSTG-RESILIENCE-1]
+    mastg_tests: [MASTG-TEST-0045]
     mitre_keywords: [root detection, anti-tamper]
     why: No root check allows running on compromised devices, easing attacks.
     how: Use libraries like RootBeer. Gracefully exit or limit functionality if rooted.
   BIN_NO_ANTI_DEBUG:
     owasp: [MASVS-RESILIENCE-2, MSTG-RESILIENCE-2]
+    mastg_tests: [MASTG-TEST-0046]
     mitre_keywords: [anti-debug, reverse]
     why: Lack of anti-debug allows easy runtime inspection.
     how: Check Debug.isDebuggerConnected or use ptrace. Obfuscate with ProGuard.
   BIN_NO_OBFUSCATION:
     owasp: [MASVS-RESILIENCE-3, MSTG-RESILIENCE-3]
+    mastg_tests: [MASTG-TEST-0051]
     mitre_keywords: [obfuscation, code protection]
     why: Unobfuscated code is easy to reverse engineer.
     how: Enable minifyEnabled and use ProGuard/R8 in build.gradle.
   BIN_EMULATOR_DETECT:
     owasp: [MASVS-RESILIENCE-1, MSTG-RESILIENCE-1]
+    mastg_tests: [MASTG-TEST-0049]
     mitre_keywords: [emulator detection, anti-analysis]
     why: No emulator check allows analysis in controlled environments.
     how: Check Build.FINGERPRINT for "generic" or use emulator properties.
   PRIV_PII_IN_CODE:
     owasp: [MASVS-STORAGE-3, MSTG-STORAGE-7]
+    mastg_tests: [MASTG-TEST-0001]
     mitre_keywords: [pii hardcoded, privacy violation]
     why: Hardcoded PII risks exposure and violates GDPR/CCPA.
     how: Remove hardcoded data. Use test placeholders in code.
   PRIV_EXCESS_PERM:
     owasp: [MASVS-PLATFORM-4, MSTG-PLATFORM-1]
+    mastg_tests: [MASTG-TEST-0024, MASTG-TEST-0254, MASTG-TEST-0255]
     mitre_keywords: [excess permission, privacy]
     why: Unnecessary permissions collect excess data, eroding user trust.
     how: Audit manifest; remove unused. Explain in privacy policy.
@@ -1943,3 +1989,256 @@ rules:
     mitre_keywords: [deprecated, MD5, smali]
     why: MD5 hash in smali - weak algorithm.
     how: Use SHA-256 instead.
+  # =============================================================================
+  # Storage and Logging Additional Rules (MASTG-TEST-0004, 0005, 0200-0207, 0304-0306)
+  # =============================================================================
+  NOTIF_SENSITIVE_DATA:
+    owasp: [MASVS-STORAGE-2]
+    mastg_tests: [MASTG-TEST-0005]
+    mitre_keywords: [notification, sensitive data, PII]
+    why: Sensitive data in notifications can be visible on lock screen or captured by other apps.
+    how: Avoid putting secrets, PII, or tokens in notification content. Use setVisibility(VISIBILITY_SECRET).
+  THIRDPARTY_DATA_SHARE:
+    owasp: [MASVS-PRIVACY-1]
+    mastg_tests: [MASTG-TEST-0004]
+    mitre_keywords: [third party, data sharing, analytics]
+    why: Sharing sensitive data with third-party SDKs without user consent violates privacy.
+    how: Anonymize or hash sensitive data before sending to analytics. Get user consent.
+  DB_SENSITIVE_DATA:
+    owasp: [MASVS-STORAGE-1]
+    mastg_tests: [MASTG-TEST-0304, MASTG-TEST-0305, MASTG-TEST-0306]
+    mitre_keywords: [database, sensitive data, SQLite, Room]
+    why: Storing sensitive data in plain-text databases exposes it to extraction.
+    how: Use SQLCipher or Room with encryption. Avoid storing secrets in databases.
+  TEMP_FILE_SENSITIVE:
+    owasp: [MASVS-STORAGE-1]
+    mastg_tests: [MASTG-TEST-0304]
+    mitre_keywords: [temp file, cache, sensitive data]
+    why: Temporary files may persist and be accessible to other apps or via backup.
+    how: Delete temp files immediately after use. Use encrypted storage for sensitive cache.
+
+  # =============================================================================
+  # Debug Code Detection Rules (MASTG-TEST-0041)
+  # =============================================================================
+  BIN_DEBUG_CODE:
+    owasp: [MASVS-RESILIENCE-1]
+    mastg_tests: [MASTG-TEST-0041]
+    mitre_keywords: [debug code, BuildConfig.DEBUG, logging, StrictMode]
+    why: Debug code left in production exposes information and may bypass security checks.
+    how: Use ProGuard/R8 to strip debug code. Check for BuildConfig.DEBUG before debug operations.
+
+  # =============================================================================
+  # Native Library Security Rules (MASTG-TEST-0040, 0222)
+  # =============================================================================
+  NAT_DWARF_DEBUG:
+    owasp: [MASVS-RESILIENCE-2]
+    mastg_tests: [MASTG-TEST-0040]
+    mitre_keywords: [DWARF, debug sections, native, symbols]
+    why: DWARF debug sections expose source code structure and aid reverse engineering.
+    how: Strip debug sections with "strip --strip-debug" or use "-s" linker flag.
+  NAT_RPATH:
+    owasp: [MASVS-CODE-2]
+    mastg_tests: [MASTG-TEST-0222]
+    mitre_keywords: [RPATH, library path, native]
+    why: RPATH entries are not supported on Android and indicate misconfigured build.
+    how: Remove -rpath linker flags. Android uses system library paths only.
+  NAT_RUNPATH:
+    owasp: [MASVS-CODE-2]
+    mastg_tests: [MASTG-TEST-0222]
+    mitre_keywords: [RUNPATH, library path, native]
+    why: RUNPATH entries have no effect on Android and indicate build issues.
+    how: Remove -runpath linker flags from native build configuration.
+
+  # =============================================================================
+  # Key Management Rules (MASTG-TEST-0307-0312)
+  # =============================================================================
+  CRYPTO_HARDCODED_KEY:
+    owasp: [MASVS-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0307, MASTG-TEST-0308]
+    mitre_keywords: [hardcoded key, secret, SecretKeySpec]
+    why: Hardcoded keys can be easily extracted via reverse engineering.
+    how: Use Android Keystore to generate and store keys. Derive keys from user input.
+  CRYPTO_WEAK_PBKDF2:
+    owasp: [MASVS-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0312]
+    mitre_keywords: [PBKDF2, iterations, key derivation]
+    why: Low PBKDF2 iterations enable brute-force attacks on derived keys.
+    how: Use at least 100,000 iterations. Consider Argon2id for new implementations.
+  CRYPTO_STATIC_SALT:
+    owasp: [MASVS-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0312]
+    mitre_keywords: [salt, PBKDF2, key derivation]
+    why: Static or weak salts enable rainbow table attacks and reduce security.
+    how: Use SecureRandom to generate a unique 16+ byte salt per key derivation.
+  CRYPTO_KEY_IN_STRING:
+    owasp: [MASVS-CRYPTO-1]
+    mastg_tests: [MASTG-TEST-0307]
+    mitre_keywords: [key storage, String, memory]
+    why: Strings are immutable and not cleared from memory, exposing key material.
+    how: Use char[] or byte[] for key material. Call Arrays.fill() to clear after use.
+  CRYPTO_WEAK_RANDOM:
+    owasp: [MASVS-CRYPTO-6]
+    mastg_tests: [MASTG-TEST-0206]
+    mitre_keywords: [random, predictable, PRNG]
+    why: java.util.Random is not cryptographically secure - predictable output.
+    how: Use SecureRandom for all cryptographic operations.
+  CRYPTO_WEAK_KEY_SIZE:
+    owasp: [MASVS-CRYPTO-2]
+    mastg_tests: [MASTG-TEST-0308]
+    mitre_keywords: [key size, weak, brute force]
+    why: Small key sizes are vulnerable to brute-force attacks.
+    how: Use AES-256 for symmetric, RSA-2048+ or EC P-256+ for asymmetric keys.
+
+  # =============================================================================
+  # Certificate Validation Bypass Rules (MASTG-TEST-0242)
+  # =============================================================================
+  NET_CERT_BYPASS_CLIENT:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0242]
+    mitre_keywords: [certificate, TrustManager, bypass, MITM]
+    why: Empty checkClientTrusted allows any client certificate - MITM risk.
+    how: Implement proper certificate validation or use system defaults.
+  NET_CERT_BYPASS_ISSUERS:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0242]
+    mitre_keywords: [certificate, issuer, validation]
+    why: Returning null from getAcceptedIssuers bypasses certificate chain validation.
+    how: Return proper certificate array or use default TrustManager.
+  NET_CERT_BYPASS_TRUSTALL:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0242]
+    mitre_keywords: [TrustAll, certificate, MITM]
+    why: TrustAll patterns completely disable certificate validation - critical MITM risk.
+    how: Remove TrustAll implementations. Use system certificate store.
+  NET_CERT_BYPASS_INIT:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0242]
+    mitre_keywords: [SSLContext, TrustManager, initialization]
+    why: SSLContext with null/permissive TrustManager disables all validation.
+    how: Use SSLContext.getDefault() or configure proper TrustManager.
+  NET_CERT_BYPASS_DEBUG:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0242]
+    mitre_keywords: [debug, certificate bypass, conditional]
+    why: Debug-mode certificate bypass may accidentally reach production.
+    how: Never conditionally bypass certificate validation. Use network_security_config.
+
+  # =============================================================================
+  # Hostname Verification Bypass Rules (MASTG-TEST-0243)
+  # =============================================================================
+  NET_HOSTNAME_ALWAYS_TRUE:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0243]
+    mitre_keywords: [hostname, verification, bypass]
+    why: HostnameVerifier returning true accepts any hostname - MITM risk.
+    how: Use default hostname verification. Implement proper CN/SAN matching if custom.
+  NET_HOSTNAME_ALLOWALL:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0243]
+    mitre_keywords: [AllowAllHostnameVerifier, deprecated, bypass]
+    why: AllowAllHostnameVerifier is deprecated and disables hostname checking.
+    how: Remove AllowAllHostnameVerifier. Use OkHostnameVerifier or system default.
+  NET_HOSTNAME_NULL:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0243]
+    mitre_keywords: [hostname, null, verification]
+    why: Setting hostname verifier to null disables hostname validation.
+    how: Do not set null hostname verifier. Use defaults.
+  NET_HOSTNAME_NOOP:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0243]
+    mitre_keywords: [NoopHostnameVerifier, bypass]
+    why: NoopHostnameVerifier performs no verification - MITM vulnerable.
+    how: Replace with proper hostname verification logic.
+  NET_HOSTNAME_OKHTTP_BYPASS:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0243]
+    mitre_keywords: [OkHttp, hostname, bypass]
+    why: OkHttp with disabled hostname verification enables MITM attacks.
+    how: Use OkHttp's default hostname verifier. Configure certificatePinner instead.
+
+  # =============================================================================
+  # WebSocket Security Rules (MASTG-TEST-0295)
+  # =============================================================================
+  NET_WEBSOCKET_INSECURE:
+    owasp: [MASVS-NETWORK-1]
+    mastg_tests: [MASTG-TEST-0295]
+    mitre_keywords: [WebSocket, ws, cleartext, wss]
+    why: WebSocket over ws:// transmits data in cleartext - eavesdropping risk.
+    how: Use wss:// (WebSocket Secure) for all WebSocket connections.
+  NET_WEBSOCKET_NO_CERT:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0295]
+    mitre_keywords: [WebSocket, certificate, TrustManager]
+    why: WebSocket with custom TrustManager may bypass certificate validation.
+    how: Use system TrustManager for WebSocket SSL. Add certificate pinning.
+  NET_WEBSOCKET_PERMISSIVE_SSL:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0295]
+    mitre_keywords: [WebSocket, SSL, permissive]
+    why: Permissive SSL configuration for WebSocket enables MITM attacks.
+    how: Use default SSL configuration. Validate certificates properly.
+  NET_WEBSOCKET_NO_HOSTNAME:
+    owasp: [MASVS-NETWORK-2]
+    mastg_tests: [MASTG-TEST-0295]
+    mitre_keywords: [WebSocket, hostname, verification]
+    why: WebSocket without hostname verification vulnerable to MITM.
+    how: Enable hostname verification for WebSocket connections.
+  NET_WEBSOCKET_INSECURE_LIB:
+    owasp: [MASVS-NETWORK-1]
+    mastg_tests: [MASTG-TEST-0295]
+    mitre_keywords: [WebSocket, socket.io, insecure]
+    why: WebSocket library configured with ws:// instead of wss://.
+    how: Configure WebSocket library to use secure wss:// protocol.
+
+  # =============================================================================
+  # Screenshot Protection Rules (MASTG-TEST-0010, 0291-0294)
+  # =============================================================================
+  SCREEN_FLAG_SECURE:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010, MASTG-TEST-0291]
+    mitre_keywords: [FLAG_SECURE, screenshot, screen capture]
+    why: FLAG_SECURE prevents screenshots and screen recording of sensitive content.
+    how: Add FLAG_SECURE in onCreate() for activities showing sensitive data.
+  SCREEN_SURFACE_SECURE:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010, MASTG-TEST-0292]
+    mitre_keywords: [SurfaceView, setSecure, video]
+    why: SurfaceView.setSecure() prevents capture of video/media content.
+    how: Call setSecure(true) on SurfaceViews displaying sensitive content.
+  SCREEN_COMPOSE_SECURE:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010, MASTG-TEST-0293]
+    mitre_keywords: [Compose, SecureEventDispatcherPolicy]
+    why: Compose screens need SecureEventDispatcherPolicy for screenshot protection.
+    how: Apply SecureEventDispatcherPolicy to Compose screens with sensitive content.
+  SCREEN_RECENTS_DISABLED:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010, MASTG-TEST-0294]
+    mitre_keywords: [recents, screenshot, task switcher]
+    why: Recents screenshots can expose sensitive content in app switcher.
+    how: Call setRecentsScreenshotEnabled(false) for sensitive activities.
+  SCREEN_SENSITIVE_LOGIN:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010]
+    mitre_keywords: [login, screenshot, credential]
+    why: Login screens may expose credentials if screenshots are allowed.
+    how: Add FLAG_SECURE to login activities.
+  SCREEN_SENSITIVE_PAYMENT:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010]
+    mitre_keywords: [payment, screenshot, card]
+    why: Payment screens showing card data must prevent screenshot capture.
+    how: Add FLAG_SECURE to payment and checkout activities.
+  SCREEN_SENSITIVE_OTP:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010]
+    mitre_keywords: [OTP, verification, screenshot]
+    why: OTP/verification screens can leak authentication codes via screenshot.
+    how: Add FLAG_SECURE to OTP entry and verification activities.
+  SCREEN_NO_PROTECTION:
+    owasp: [MASVS-PLATFORM-3]
+    mastg_tests: [MASTG-TEST-0010]
+    mitre_keywords: [screenshot, protection, missing]
+    why: App has no screenshot protection - all screens can be captured.
+    how: Identify sensitive screens and add FLAG_SECURE or setSecure().

@@ -1,15 +1,32 @@
 #!/usr/bin/env python3
+"""Aggregate CSV findings from all scanners into unified output.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to aggregate all CSV findings into one and generate stats.json
-# Why: Centralizes outputs from multiple scanners for unified report; stats for quick summary.
+Collects CSV files from scan directories (30_scans, 40_sbom, 60_dynamic),
+concatenates them into a single findings file, and generates stats.json
+with severity counts for the summary view.
 
-import sys, os, pandas as pd, json
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import json
+import os
+import sys
 import traceback
 
-def main():
+import pandas as pd
+
+
+def main() -> None:
+    """Aggregate findings and write to stdout with stats.json.
+
+    Command line args:
+        sys.argv[1]: Path to audit directory
+
+    Raises:
+        SystemExit: If arguments missing or aggregation fails.
+    """
     try:
         if len(sys.argv) < 2:
             raise ValueError("Usage: aggregate_results.py <audit_dir>")

@@ -237,7 +237,6 @@ def generate_html_report(findings: list[dict], title: str, output_path: str):
     <title>{html.escape(title)}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {{
             --bg-primary: #ffffff;
@@ -490,10 +489,12 @@ def generate_html_report(findings: list[dict], title: str, output_path: str):
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
+    document.addEventListener('DOMContentLoaded', function() {{
         // Findings data
         const findings = {json.dumps(findings_json)};
 
@@ -719,6 +720,7 @@ def generate_html_report(findings: list[dict], title: str, output_path: str):
 
         // Apply saved theme to charts
         updateChartColors();
+    }}); // End DOMContentLoaded
     </script>
 </body>
 </html>

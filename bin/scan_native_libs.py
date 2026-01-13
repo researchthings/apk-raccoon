@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""
-Native Library (JNI/NDK) Security Scanner v1.0
+"""Scan for Native Library (JNI/NDK) security issues.
 
-Analyzes native (.so) libraries for security issues:
-- Missing security flags (NX, RELRO, PIE, Stack Canary)
-- Known vulnerable libraries
-- Unsafe JNI patterns in code
-- Debug symbols and sensitive strings
+Analyzes native (.so) libraries for security issues including missing
+security flags, known vulnerable libraries, and unsafe JNI patterns.
 
-References:
-- https://developer.android.com/privacy-and-security/risks/use-of-native-code
-- https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0044/
-- https://blog.quarkslab.com/android-ndk-binary-security-assessment.html
+Checks:
+    - Missing security flags (NX, RELRO, PIE, Stack Canary)
+    - Known vulnerable libraries (OpenSSL, libpng, etc.)
+    - Debug symbols and DWARF sections not stripped
+    - RPATH/RUNPATH entries (misconfigured build)
+    - Unsafe JNI patterns in code
 
-OWASP Alignment: MASVS-CODE-4, MASVS-RESILIENCE-2
+OWASP MASTG Coverage:
+    - MASTG-TEST-0044: Testing Native Code Security
+    - MASTG-TEST-0040: Testing for Debugging Symbols
+    - MASTG-TEST-0222: Testing for RPATH/RUNPATH
 
 Note: Full ELF analysis requires 'readelf' or 'llvm-readelf' on PATH.
-      Scanner works without it but with reduced functionality.
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -113,13 +117,25 @@ JNI_CODE_PATTERNS = [
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def find_readelf() -> str | None:
-    """Find readelf or llvm-readelf binary."""
+    """Find readelf or llvm-readelf binary.
+
+    Returns:
+        Path to readelf binary if found, None otherwise.
+    """
     for cmd in ["readelf", "llvm-readelf", "arm-linux-gnueabi-readelf"]:
         path = shutil.which(cmd)
         if path:
@@ -128,13 +144,24 @@ def find_readelf() -> str | None:
 
 
 def analyze_elf_security(lib_path: str, readelf_cmd: str) -> dict:
-    """Analyze ELF binary for security flags using readelf."""
+    """Analyze ELF binary for security flags using readelf.
+
+    Args:
+        lib_path: Path to the ELF binary file.
+        readelf_cmd: Path to readelf command.
+
+    Returns:
+        Dictionary with security flag status (nx, pie, relro, canary, etc.).
+    """
     result = {
         "nx": None,  # NX (No-Execute) stack
         "pie": None,  # Position Independent Executable
         "relro": None,  # Relocation Read-Only
         "canary": None,  # Stack canary
         "stripped": None,  # Debug symbols stripped
+        "dwarf_debug": None,  # DWARF debug sections (MASTG-TEST-0040)
+        "rpath": None,  # RPATH entries (MASTG-TEST-0222)
+        "runpath": None,  # RUNPATH entries
     }
 
     try:
@@ -154,7 +181,7 @@ def analyze_elf_security(lib_path: str, readelf_cmd: str) -> dict:
                 else:
                     result["nx"] = True
 
-        # Check dynamic section for RELRO and other flags
+        # Check dynamic section for RELRO, RPATH, and other flags
         dynamic = subprocess.run(
             [readelf_cmd, "-d", lib_path],
             capture_output=True,
@@ -170,6 +197,18 @@ def analyze_elf_security(lib_path: str, readelf_cmd: str) -> dict:
                 result["relro"] = "partial"
             else:
                 result["relro"] = "none"
+
+            # Check for RPATH/RUNPATH (MASTG-TEST-0222)
+            # RPATH/RUNPATH are not supported on Android and indicate misconfigured build
+            if "RPATH" in output or "(RPATH)" in output:
+                result["rpath"] = True
+            else:
+                result["rpath"] = False
+
+            if "RUNPATH" in output or "(RUNPATH)" in output:
+                result["runpath"] = True
+            else:
+                result["runpath"] = False
 
         # Check symbols for stack canary
         symbols = subprocess.run(
@@ -206,6 +245,26 @@ def analyze_elf_security(lib_path: str, readelf_cmd: str) -> dict:
             elif "EXEC" in output:
                 result["pie"] = False
 
+        # Check section headers for DWARF debug sections (MASTG-TEST-0040)
+        sections = subprocess.run(
+            [readelf_cmd, "-S", lib_path],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if sections.returncode == 0:
+            output = sections.stdout
+            # Look for DWARF debug sections that should be stripped
+            dwarf_sections = [".debug_info", ".debug_str", ".debug_line",
+                              ".debug_abbrev", ".debug_loc", ".debug_ranges",
+                              ".debug_frame", ".debug_aranges"]
+            for section in dwarf_sections:
+                if section in output:
+                    result["dwarf_debug"] = True
+                    break
+            else:
+                result["dwarf_debug"] = False
+
     except subprocess.TimeoutExpired:
         pass
     except Exception:
@@ -215,7 +274,14 @@ def analyze_elf_security(lib_path: str, readelf_cmd: str) -> dict:
 
 
 def iter_native_libs_from_apk(apk_path: str) -> Iterator[tuple[str, str, bytes]]:
-    """Extract native libraries from APK, yielding (arch, name, content)."""
+    """Extract native libraries from APK, yielding library info.
+
+    Args:
+        apk_path: Path to APK file.
+
+    Yields:
+        Tuples of (architecture, library_name, binary_content).
+    """
     try:
         with zipfile.ZipFile(apk_path, "r") as zf:
             for name in zf.namelist():
@@ -234,7 +300,14 @@ def iter_native_libs_from_apk(apk_path: str) -> Iterator[tuple[str, str, bytes]]
 
 
 def iter_native_libs_from_dir(src_dir: str) -> Iterator[tuple[str, str, str]]:
-    """Find native libraries in extracted source, yielding (arch, name, path)."""
+    """Find native libraries in extracted source directory.
+
+    Args:
+        src_dir: Directory containing extracted source files.
+
+    Yields:
+        Tuples of (architecture, library_name, file_path).
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -251,7 +324,14 @@ def iter_native_libs_from_dir(src_dir: str) -> Iterator[tuple[str, str, str]]:
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -268,7 +348,15 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
 
 
 def scan_native_libs(apk_path: str | None, src_dir: str | None) -> list[dict]:
-    """Scan native libraries for security issues."""
+    """Scan native libraries for security issues.
+
+    Args:
+        apk_path: Optional path to APK file.
+        src_dir: Optional path to extracted source directory.
+
+    Returns:
+        List of finding dictionaries for native library issues.
+    """
     findings = []
     libs_found = []
     readelf_cmd = find_readelf()
@@ -397,6 +485,42 @@ def scan_native_libs(apk_path: str | None, src_dir: str | None) -> list[dict]:
                             "HowFound": "Strip symbols for release: strip --strip-all",
                         })
 
+                    # Check for DWARF debug sections (MASTG-TEST-0040)
+                    if elf_info["dwarf_debug"] is True:
+                        findings.append({
+                            "Source": "native_libs",
+                            "RuleID": "NAT_DWARF_DEBUG",
+                            "Title": f"DWARF Debug Sections Present: {lib_name}",
+                            "Location": f"lib/{arch}/{lib_name}",
+                            "Evidence": "Contains .debug_* sections",
+                            "Severity": "Medium",
+                            "HowFound": "DWARF sections expose source info - strip with: strip --strip-debug",
+                        })
+
+                    # Check for RPATH (MASTG-TEST-0222)
+                    if elf_info["rpath"] is True:
+                        findings.append({
+                            "Source": "native_libs",
+                            "RuleID": "NAT_RPATH",
+                            "Title": f"RPATH Entry Detected: {lib_name}",
+                            "Location": f"lib/{arch}/{lib_name}",
+                            "Evidence": "DT_RPATH found in dynamic section",
+                            "Severity": "Medium",
+                            "HowFound": "RPATH not supported on Android - indicates misconfigured build",
+                        })
+
+                    # Check for RUNPATH
+                    if elf_info["runpath"] is True:
+                        findings.append({
+                            "Source": "native_libs",
+                            "RuleID": "NAT_RUNPATH",
+                            "Title": f"RUNPATH Entry Detected: {lib_name}",
+                            "Location": f"lib/{arch}/{lib_name}",
+                            "Evidence": "DT_RUNPATH found in dynamic section",
+                            "Severity": "Low",
+                            "HowFound": "RUNPATH not used by Android linker",
+                        })
+
     # Also check libs in extracted source directory
     if src_dir:
         for arch, lib_name, lib_path in iter_native_libs_from_dir(src_dir):
@@ -471,7 +595,14 @@ def scan_native_libs(apk_path: str | None, src_dir: str | None) -> list[dict]:
 
 
 def scan_code_for_jni_patterns(src_dir: str) -> list[dict]:
-    """Scan source code for JNI/native code patterns."""
+    """Scan source code for JNI/native code patterns.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for JNI patterns.
+    """
     findings = []
     seen = set()
 
@@ -505,7 +636,15 @@ def scan_code_for_jni_patterns(src_dir: str) -> list[dict]:
 
 
 def scan_for_native_libs(apk_path: str | None, src_dir: str | None) -> list[dict]:
-    """Main scanning function for native library security."""
+    """Scan for native library security issues.
+
+    Args:
+        apk_path: Optional path to APK file.
+        src_dir: Optional path to source directory.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     # Scan native libraries
@@ -520,8 +659,13 @@ def scan_for_native_libs(apk_path: str | None, src_dir: str | None) -> list[dict
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -534,7 +678,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan native libraries for security issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Output CSV path
+        sys.argv[2]: Optional path to APK file
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <output.csv> [apk_path] [src_dir]", file=sys.stderr)
         sys.exit(1)

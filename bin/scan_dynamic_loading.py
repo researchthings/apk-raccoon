@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""
-Dynamic Code Loading Scanner v1.0
+"""Scan for Dynamic Code Loading vulnerabilities.
 
-Detects insecure dynamic code loading patterns that can lead to:
-- Code injection via DexClassLoader
-- Remote code execution through downloaded DEX files
-- Path traversal in class loading
-- Arbitrary code execution from external storage
+Detects insecure dynamic code loading patterns that can lead to code
+injection, remote code execution, and arbitrary code execution.
 
-References:
-- https://developer.android.com/privacy-and-security/risks/unsafe-reflection
-- https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0038/
-- https://blog.oversecured.com/Android-security-checklist-dynamic-code-loading/
+Checks:
+    - DexClassLoader usage and patterns
+    - Code loading from external storage
+    - Downloaded DEX file patterns
+    - Reflection-based code execution
+    - Missing integrity verification
 
-OWASP Alignment: MASVS-CODE-3, MASVS-CODE-4, MASVS-RESILIENCE-2
+OWASP MASTG Coverage:
+    - MASTG-TEST-0038: Testing for Dynamic Code Loading
+    - MASTG-TEST-0039: Testing for Code Injection
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -30,13 +34,28 @@ CSV_FIELDNAMES = ["Source", "RuleID", "Title", "Location", "Evidence", "Severity
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -274,7 +293,14 @@ DEX_FILE_PATTERNS = [
 
 
 def scan_code_for_dynamic_loading(src_dir: str) -> list[dict]:
-    """Scan source code for dynamic code loading patterns."""
+    """Scan source code for dynamic code loading patterns.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for dynamic loading patterns.
+    """
     findings = []
     seen = set()
 
@@ -310,7 +336,14 @@ def scan_code_for_dynamic_loading(src_dir: str) -> list[dict]:
 
 
 def analyze_loading_context(findings: list[dict]) -> list[dict]:
-    """Analyze patterns to provide context-aware findings."""
+    """Analyze patterns to provide context-aware findings.
+
+    Args:
+        findings: List of finding dictionaries from initial scan.
+
+    Returns:
+        List of additional findings based on pattern analysis.
+    """
     analysis_findings = []
 
     # Check for high-risk combinations
@@ -387,7 +420,14 @@ def analyze_loading_context(findings: list[dict]) -> list[dict]:
 
 
 def scan_for_dynamic_loading(src_dir: str) -> list[dict]:
-    """Main scanning function for dynamic code loading issues."""
+    """Scan for dynamic code loading vulnerabilities.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     if not src_dir or not os.path.exists(src_dir):
@@ -439,8 +479,13 @@ def scan_for_dynamic_loading(src_dir: str) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -453,7 +498,16 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for dynamic code loading and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv>", file=sys.stderr)
         sys.exit(1)

@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
+"""Scan for privacy vulnerabilities and excessive data collection.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 2.0
-# Script to scan for privacy control issues (e.g., PII handling, excessive permissions)
-# Why: Addresses OWASP M6; inadequate privacy leads to data leaks.
-#
-# Improvements in v2.0:
-# - Fixed broken negative lookahead patterns
-# - Corrected permission classification (Android dangerous permissions)
-# - Added context-aware PII detection
-# - Fixed file handle leak
+Detects hardcoded PII (SSN, credit cards), excessive permission requests,
+unencrypted PII storage, and third-party data sharing without consent indicators.
+
+Features (v2.0):
+    - Android dangerous permissions classification
+    - Context-aware PII detection
+    - Encryption context checking
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0006: PII handling issues
+    - MASTG-TEST-0011: Permission over-collection
+    - MASTG-TEST-0004: Third-party data sharing
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 2.0
+"""
 
 import sys
 import os
@@ -144,8 +151,15 @@ DATA_SHARING_PATTERNS = [
 ]
 
 
-def parse_manifest_for_perms(mani_path):
-    """Parse manifest for permissions and categorize them."""
+def parse_manifest_for_perms(mani_path: str) -> dict:
+    """Parse manifest for permissions and categorize them.
+
+    Args:
+        mani_path: Path to AndroidManifest.xml.
+
+    Returns:
+        Dict with 'dangerous', 'high_sensitivity', and 'all' permission lists.
+    """
     permissions = {
         'dangerous': [],
         'high_sensitivity': [],
@@ -173,8 +187,17 @@ def parse_manifest_for_perms(mani_path):
     return permissions
 
 
-def check_encrypted_storage(text, pii_match_start, pii_match_end):
-    """Check if PII storage appears to use encryption in the nearby context."""
+def check_encrypted_storage(text: str, pii_match_start: int, pii_match_end: int) -> bool:
+    """Check if PII storage appears to use encryption in the nearby context.
+
+    Args:
+        text: Full file content.
+        pii_match_start: Start index of the PII match.
+        pii_match_end: End index of the PII match.
+
+    Returns:
+        True if encryption indicators found near the PII storage.
+    """
     # Look for encryption indicators within 200 chars of the match
     context_start = max(0, pii_match_start - 200)
     context_end = min(len(text), pii_match_end + 200)
@@ -189,8 +212,16 @@ def check_encrypted_storage(text, pii_match_start, pii_match_end):
     return any(ind in context for ind in encryption_indicators)
 
 
-def iter_text(src_dir, apk_path):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -216,7 +247,18 @@ def iter_text(src_dir, apk_path):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan for privacy issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+        sys.argv[4]: Optional path to AndroidManifest.xml
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             print("Usage: scan_privacy_issues.py <src_dir> <out.csv> [apk_path] [manifest.xml]", file=sys.stderr)

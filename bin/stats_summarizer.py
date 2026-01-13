@@ -1,15 +1,29 @@
 #!/usr/bin/env python3
+"""Print findings summary from stats.json.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to print a summary from stats.json
-# Why: Provides quick overview of findings by severity; helps prioritize remediation.
+Reads stats.json and outputs a one-line summary with findings count by severity
+to help prioritize remediation efforts.
 
-import sys, json, os
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import json
+import os
+import sys
 import traceback
 
-def main():
+
+def main() -> None:
+    """Print findings summary to stdout.
+
+    Command line args:
+        sys.argv[1]: Path to stats.json
+
+    Raises:
+        SystemExit: If stats.json missing or invalid.
+    """
     try:
         if len(sys.argv) < 2:
             raise ValueError("Usage: summarize_stats.py <stats.json>")

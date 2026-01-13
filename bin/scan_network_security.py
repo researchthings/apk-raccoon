@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
+"""Scan for network security vulnerabilities.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 2.0
-# Script to scan for network security issues in Android code/manifest/APK
-# Why: Network vulns like cleartext traffic are common; covers MASVS-NETWORK.
-#
-# Improvements in v2.0:
-# - Filter out documentation/comment URLs
-# - More specific cleartext detection
-# - Distinguish between legitimate and suspicious TrustManager usage
-# - Skip localhost/development URLs
+Detects cleartext traffic, certificate validation bypass, hostname verification
+bypass, WebSocket insecurity, and missing certificate pinning.
+
+Features (v2.0):
+    - Filters documentation/comment/localhost URLs
+    - Distinguishes legitimate vs suspicious TrustManager usage
+    - WebSocket security analysis
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0242: Certificate validation bypass
+    - MASTG-TEST-0243: Hostname verification bypass
+    - MASTG-TEST-0295: WebSocket security
+    - MASTG-TEST-0021: Cleartext traffic detection
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 2.0
+"""
 
 import sys
 import os
@@ -44,17 +52,84 @@ COMMENT_INDICATORS = [
     r'<!--',    # XML comment
 ]
 
+# =============================================================================
+# Certificate Validation Bypass Patterns (MASTG-TEST-0242)
+# =============================================================================
 
-def is_safe_url(url):
-    """Check if URL is a safe/ignorable pattern."""
+CERT_VALIDATION_PATTERNS = [
+    # Empty checkClientTrusted method
+    (r'checkClientTrusted\s*\([^)]*\)\s*\{[^}]*\}', "NET_CERT_BYPASS_CLIENT", "Critical", "Empty checkClientTrusted - accepts all client certs"),
+    # Empty checkServerTrusted (checked separately with context)
+    (r'getAcceptedIssuers\s*\([^)]*\)\s*\{\s*return\s+null\s*;?\s*\}', "NET_CERT_BYPASS_ISSUERS", "Critical", "getAcceptedIssuers returns null"),
+    # TrustAllCerts pattern
+    (r'(?i)TrustAll(?:Certs?|Manager|SSLContext)', "NET_CERT_BYPASS_TRUSTALL", "Critical", "TrustAll pattern detected"),
+    # SSLContext with null TrustManager
+    (r'sslContext\.init\s*\(\s*null\s*,\s*(?:null|new\s+TrustManager)', "NET_CERT_BYPASS_INIT", "Critical", "SSLContext initialized with permissive TrustManager"),
+    # Debug-only bypass (still risky)
+    (r'(?i)if\s*\(\s*(?:BuildConfig\.)?DEBUG\s*\)[^;]*(?:TrustManager|acceptAll|skipVerif)', "NET_CERT_BYPASS_DEBUG", "High", "Certificate validation bypassed in debug mode"),
+]
+
+# =============================================================================
+# Hostname Verification Bypass Patterns (MASTG-TEST-0243)
+# =============================================================================
+
+HOSTNAME_BYPASS_PATTERNS = [
+    # HostnameVerifier always returns true
+    (r'verify\s*\([^)]*\)\s*\{\s*return\s+true\s*;?\s*\}', "NET_HOSTNAME_ALWAYS_TRUE", "Critical", "HostnameVerifier always returns true"),
+    # AllowAllHostnameVerifier (deprecated but still used)
+    (r'(?i)AllowAllHostnameVerifier', "NET_HOSTNAME_ALLOWALL", "Critical", "Using deprecated AllowAllHostnameVerifier"),
+    (r'(?i)SSLSocketFactory\.ALLOW_ALL_HOSTNAME_VERIFIER', "NET_HOSTNAME_ALLOWALL", "Critical", "Using ALLOW_ALL_HOSTNAME_VERIFIER"),
+    # Null hostname verifier
+    (r'setHostnameVerifier\s*\(\s*null\s*\)', "NET_HOSTNAME_NULL", "Critical", "HostnameVerifier set to null"),
+    # NoopHostnameVerifier
+    (r'(?i)NoopHostnameVerifier|NOOP_HOSTNAME_VERIFIER', "NET_HOSTNAME_NOOP", "Critical", "Using NoopHostnameVerifier"),
+    # OkHttp hostname verifier disabled
+    (r'\.hostnameVerifier\s*\([^)]*return\s+true', "NET_HOSTNAME_OKHTTP_BYPASS", "Critical", "OkHttp hostname verification disabled"),
+]
+
+# =============================================================================
+# WebSocket Security Patterns (MASTG-TEST-0295)
+# =============================================================================
+
+WEBSOCKET_PATTERNS = [
+    # Insecure WebSocket (ws://) instead of wss://
+    (r'["\']ws://(?!localhost|127\.0\.0\.1|10\.|192\.168\.)[^"\']+["\']', "NET_WEBSOCKET_INSECURE", "High", "Insecure WebSocket (ws:// instead of wss://)"),
+    # WebSocket without certificate validation
+    (r'(?i)WebSocket[^;]*TrustManager', "NET_WEBSOCKET_NO_CERT", "Critical", "WebSocket with custom TrustManager"),
+    # OkHttp WebSocket with permissive SSL
+    (r'(?i)OkHttpClient\.Builder[^}]*WebSocket[^}]*sslSocketFactory', "NET_WEBSOCKET_PERMISSIVE_SSL", "High", "WebSocket with custom SSL configuration"),
+    # WebSocket with hostname verifier disabled
+    (r'(?i)WebSocket[^;]*(?:setHostnameVerifier|hostnameVerifier)\s*\([^)]*(?:null|true)', "NET_WEBSOCKET_NO_HOSTNAME", "Critical", "WebSocket without hostname verification"),
+    # Raw Socket.IO or similar with ws://
+    (r'(?i)(?:socket\.io|sockjs|websocket)[^;]*ws://', "NET_WEBSOCKET_INSECURE_LIB", "High", "WebSocket library using insecure ws://"),
+]
+
+
+def is_safe_url(url: str) -> bool:
+    """Check if URL is a safe/ignorable pattern.
+
+    Args:
+        url: URL string to check.
+
+    Returns:
+        True if URL matches a safe pattern (localhost, schemas, etc).
+    """
     for pattern in SAFE_URL_PATTERNS:
         if re.search(pattern, url, re.IGNORECASE):
             return True
     return False
 
 
-def is_in_comment(text, match_start):
-    """Check if match appears to be in a comment."""
+def is_in_comment(text: str, match_start: int) -> bool:
+    """Check if match appears to be in a comment.
+
+    Args:
+        text: Full file content.
+        match_start: Start index of the match.
+
+    Returns:
+        True if match is within a comment block.
+    """
     # Get the line containing the match
     line_start = text.rfind('\n', 0, match_start) + 1
     line = text[line_start:match_start + 50]
@@ -65,8 +140,15 @@ def is_in_comment(text, match_start):
     return False
 
 
-def parse_manifest_cleartext(mani_path):
-    """Parse manifest for cleartext traffic configuration."""
+def parse_manifest_cleartext(mani_path: str) -> tuple:
+    """Parse manifest for cleartext traffic configuration.
+
+    Args:
+        mani_path: Path to AndroidManifest.xml.
+
+    Returns:
+        Tuple of (cleartext_enabled: bool|None, evidence: str|None).
+    """
     try:
         tree = etree.parse(mani_path)
         ns = {'android': 'http://schemas.android.com/apk/res/android'}
@@ -88,8 +170,16 @@ def parse_manifest_cleartext(mani_path):
         return None, None
 
 
-def iter_text(src_dir, apk_path):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str):
+    """Iterate over source files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -115,7 +205,18 @@ def iter_text(src_dir, apk_path):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan for network security issues and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Path to AndroidManifest.xml
+        sys.argv[3]: Output CSV path
+        sys.argv[4]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 4:
             print("Usage: scan_network_security.py <src_dir> <manifest.xml> <out.csv> [apk_path]", file=sys.stderr)
@@ -246,6 +347,48 @@ def main():
                         "Evidence": "Uses OkHttpClient/HttpsURLConnection without CertificatePinner",
                         "Severity": "Low",
                         "HowFound": "Heuristic"
+                    })
+
+            # Check for certificate validation bypass patterns (MASTG-TEST-0242)
+            for pattern, rule_id, severity, desc in CERT_VALIDATION_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "network",
+                        "RuleID": rule_id,
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
+
+            # Check for hostname verification bypass patterns (MASTG-TEST-0243)
+            for pattern, rule_id, severity, desc in HOSTNAME_BYPASS_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "network",
+                        "RuleID": rule_id,
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
+                    })
+
+            # Check for WebSocket security issues (MASTG-TEST-0295)
+            for pattern, rule_id, severity, desc in WEBSOCKET_PATTERNS:
+                for m in re.finditer(pattern, text):
+                    snippet = text[max(0, m.start() - 30):m.end() + 30].replace("\n", " ")
+                    rows.append({
+                        "Source": "network",
+                        "RuleID": rule_id,
+                        "Title": desc,
+                        "Location": str(path),
+                        "Evidence": snippet[:200],
+                        "Severity": severity,
+                        "HowFound": "Regex scan"
                     })
 
         # Write output

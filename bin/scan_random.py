@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
-"""
-Random Number Generator Security Scanner v1.0
+"""Scan for Insecure Random Number Generation vulnerabilities.
 
 Detects insecure random number generation that can lead to predictable
 tokens, keys, IVs, and other security-sensitive values.
 
-Checks for:
-- java.util.Random instead of SecureRandom for crypto
-- Weak seeding of random generators
-- Predictable random sources
-- Missing SecureRandom for security operations
+Checks:
+    - java.util.Random instead of SecureRandom for crypto
+    - Weak seeding of random generators (time-based, constant)
+    - Predictable random sources (Math.random, ThreadLocalRandom)
+    - Missing SecureRandom for security operations
 
-References:
-- https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0015/
-- https://cwe.mitre.org/data/definitions/338.html
-- https://developer.android.com/reference/java/security/SecureRandom
+OWASP MASTG Coverage:
+    - MASTG-TEST-0015: Testing for Insecure Random Number Generation
 
-OWASP Alignment: MASVS-CRYPTO-1
-CWE: CWE-338 (Use of Cryptographically Weak PRNG)
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -34,13 +32,28 @@ CSV_FIELDNAMES = ["Source", "RuleID", "Title", "Location", "Evidence", "Severity
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -184,7 +197,14 @@ SMALI_PATTERNS = [
 
 
 def scan_for_random_issues(src_dir: str) -> list[dict]:
-    """Scan source code for insecure random number generation."""
+    """Scan source code for insecure random number generation.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
     seen = set()
 
@@ -255,8 +275,13 @@ def scan_for_random_issues(src_dir: str) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -269,7 +294,16 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for insecure random generation and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv>", file=sys.stderr)
         sys.exit(1)

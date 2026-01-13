@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
-"""
-Fragment Injection Scanner v1.0
+"""Scan for Fragment Injection vulnerabilities.
 
-Detects fragment injection vulnerabilities in Android applications where
-malicious apps can inject arbitrary fragments into exported PreferenceActivity
-or similar activities.
+Detects fragment injection vulnerabilities where malicious apps can inject
+arbitrary fragments into exported PreferenceActivity or similar activities.
 
-Checks for:
-- PreferenceActivity without isValidFragment() override (CVE-2014-8609)
-- Fragment.instantiate() with untrusted input
-- getIntent().getStringExtra() used for fragment class names
-- Exported activities accepting fragment parameters
+Checks:
+    - PreferenceActivity without isValidFragment() override (CVE-2014-8609)
+    - Fragment.instantiate() with untrusted input
+    - getIntent().getStringExtra() used for fragment class names
+    - Exported activities accepting fragment parameters
 
-References:
-- https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0029/
-- https://cwe.mitre.org/data/definitions/470.html
-- https://securityintelligence.com/android-collapses-into-fragments/
+OWASP MASTG Coverage:
+    - MASTG-TEST-0029: Testing for Fragment Injection
 
-OWASP Alignment: MASVS-PLATFORM-1
-CWE: CWE-470 (Unsafe Reflection)
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -39,18 +36,41 @@ ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def get_android_attr(elem: ET.Element, attr: str) -> str | None:
-    """Get Android namespace attribute value."""
+    """Get Android namespace attribute value from XML element.
+
+    Args:
+        elem: XML element to query.
+        attr: Attribute name without namespace prefix.
+
+    Returns:
+        Attribute value if found, None otherwise.
+    """
     return elem.get(f"{{{ANDROID_NS}}}{attr}")
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -67,7 +87,14 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
 
 
 def parse_manifest(manifest_path: str) -> ET.Element | None:
-    """Parse AndroidManifest.xml and return root element."""
+    """Parse AndroidManifest.xml and return root element.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+
+    Returns:
+        Root XML element if parsing succeeds, None on failure.
+    """
     try:
         ET.register_namespace("android", ANDROID_NS)
         tree = ET.parse(manifest_path)
@@ -175,7 +202,14 @@ SMALI_PATTERNS = [
 
 
 def check_manifest_for_fragment_activities(manifest_path: str) -> list[dict]:
-    """Check manifest for exported activities that might be vulnerable."""
+    """Check manifest for exported activities that might be vulnerable.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+
+    Returns:
+        List of finding dictionaries for preference-like exported activities.
+    """
     findings = []
 
     root = parse_manifest(manifest_path)
@@ -215,7 +249,15 @@ def check_manifest_for_fragment_activities(manifest_path: str) -> list[dict]:
 
 
 def scan_for_fragment_injection(src_dir: str, manifest_path: str | None = None) -> list[dict]:
-    """Scan source code for fragment injection vulnerabilities."""
+    """Scan source code for fragment injection vulnerabilities.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+        manifest_path: Optional path to AndroidManifest.xml file.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
     seen = set()
 
@@ -305,8 +347,13 @@ def scan_for_fragment_injection(src_dir: str, manifest_path: str | None = None) 
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -319,7 +366,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for fragment injection vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to AndroidManifest.xml
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv> [manifest.xml]", file=sys.stderr)
         sys.exit(1)

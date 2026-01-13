@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""
-Firebase Misconfiguration Scanner v1.0
+"""Scan for Firebase security misconfigurations.
 
-Detects Firebase security misconfigurations that have led to massive data breaches:
-- Exposed Firebase Realtime Database URLs
-- Firebase Storage bucket URLs
-- Firebase API keys (can be extracted and tested)
-- Firestore project IDs
-- google-services.json configuration files
-- Firebase Cloud Messaging (FCM) server keys
+Detects Firebase misconfigurations that have led to massive data breaches,
+including exposed database URLs, storage buckets, API keys, and FCM server keys.
 
-References:
-- https://zimperium.com/blog/mobile-threat-watch/misconfigured-firebase-apps-leave-sensitive-user-data-exposed/
-- 125M+ user records exposed via misconfigured Firebase in 2024
+Checks:
+    - Exposed Firebase Realtime Database URLs
+    - Firebase Storage bucket URLs
+    - Firebase API keys (can be extracted and tested)
+    - Firestore project IDs
+    - google-services.json configuration files
+    - Firebase Cloud Messaging (FCM) server keys
 
-OWASP Alignment: MASVS-STORAGE-1, MASVS-NETWORK-1
+OWASP MASTG Coverage:
+    - MASTG-TEST-0012: Testing for Sensitive Data in Local Storage
+    - MASTG-TEST-0056: Testing Third Party Services
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -139,13 +143,28 @@ CONFIG_FILES = [
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -162,7 +181,14 @@ def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
 
 
 def iter_apk_files(apk_path: str) -> Iterator[tuple[str, str]]:
-    """Iterate over files inside APK, yielding (path, content)."""
+    """Iterate over files inside APK, yielding path and content.
+
+    Args:
+        apk_path: Path to the APK file to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each config file in APK.
+    """
     try:
         with zipfile.ZipFile(apk_path, "r") as zf:
             for name in zf.namelist():
@@ -177,8 +203,14 @@ def iter_apk_files(apk_path: str) -> Iterator[tuple[str, str]]:
         return
 
 
-def check_firebase_config(content: str, filepath: str, findings: list[dict]):
-    """Check for Firebase configuration files with potentially sensitive data."""
+def check_firebase_config(content: str, filepath: str, findings: list[dict]) -> None:
+    """Check for Firebase configuration files with potentially sensitive data.
+
+    Args:
+        content: The file content to analyze.
+        filepath: Path to the file being analyzed.
+        findings: List to append findings to (modified in place).
+    """
     try:
         config = json.loads(content)
 
@@ -229,7 +261,16 @@ def check_firebase_config(content: str, filepath: str, findings: list[dict]):
 
 
 def scan_for_firebase(src_dir: str, apk_path: str | None = None) -> list[dict]:
-    """Scan source directory and APK for Firebase misconfigurations."""
+    """Scan source directory and APK for Firebase misconfigurations.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Returns:
+        List of finding dictionaries with Source, RuleID, Title, Location,
+        Evidence, Severity, and HowFound keys.
+    """
     findings = []
     seen = set()  # Deduplicate findings
 
@@ -290,8 +331,13 @@ def scan_for_firebase(src_dir: str, apk_path: str | None = None) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -304,7 +350,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for Firebase misconfigurations and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv> [apk_path]", file=sys.stderr)
         sys.exit(1)

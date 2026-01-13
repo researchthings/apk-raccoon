@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
+"""Scan for PendingIntent security vulnerabilities.
 
-# Author: Randy Grant
-# Date: 01-09-2026
-# Version: 1.0
-# Script to scan for PendingIntent security issues
-# Why: PendingIntent misuse enables intent redirection attacks (Android 12+ requires explicit flags).
-#
-# Checks:
-# - Missing FLAG_IMMUTABLE/FLAG_MUTABLE (Android 12+ requirement)
-# - Implicit intents in PendingIntent (hijackable)
-# - Mutable PendingIntents with implicit base intent
-# - Empty base intent (can be filled by attacker)
-# - Broadcast PendingIntents without explicit receiver
+Detects PendingIntent misuse that enables intent redirection attacks.
+Android 12+ requires explicit mutability flags (FLAG_IMMUTABLE/FLAG_MUTABLE).
 
-import sys
+Checks:
+    - Missing FLAG_IMMUTABLE/FLAG_MUTABLE (Android 12+ requirement)
+    - Implicit intents in PendingIntent (hijackable)
+    - Mutable PendingIntents with implicit base intent
+    - Empty base intent (can be filled by attacker)
+    - Broadcast PendingIntents without explicit receiver
+
+OWASP MASTG Coverage:
+    - MASTG-TEST-0028: Testing for Vulnerable PendingIntent
+    - MASTG-TEST-0029: Testing for Intent Redirection
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
+"""
+
+import csv
 import os
 import re
-import csv
-import zipfile
+import sys
 import traceback
+import zipfile
+
 from lxml import etree
 
 # =============================================================================
@@ -64,8 +72,18 @@ EXPLICIT_INTENT_INDICATORS = [
 ]
 
 
-def extract_pending_intent_context(text, match_start, match_end):
-    """Extract the context around a PendingIntent creation for analysis."""
+def extract_pending_intent_context(text: str, match_start: int, match_end: int) -> str:
+    """Extract the context around a PendingIntent creation for analysis.
+
+    Args:
+        text: The source code text to extract context from.
+        match_start: Starting position of the PendingIntent match.
+        match_end: Ending position of the PendingIntent match.
+
+    Returns:
+        A string containing the relevant context surrounding the PendingIntent
+        creation, including balanced parentheses.
+    """
     # Look back to find the start of the statement (max 500 chars)
     context_start = max(0, match_start - 500)
     # Look forward to find the closing parenthesis (max 300 chars)
@@ -86,8 +104,18 @@ def extract_pending_intent_context(text, match_start, match_end):
     return text[context_start:actual_end]
 
 
-def analyze_pending_intent(context, full_text, match_start):
-    """Analyze a PendingIntent creation for security issues."""
+def analyze_pending_intent(context: str, full_text: str, match_start: int) -> list[dict]:
+    """Analyze a PendingIntent creation for security issues.
+
+    Args:
+        context: The extracted context string around the PendingIntent.
+        full_text: The full source code text for additional analysis.
+        match_start: Starting position of the match in full_text.
+
+    Returns:
+        A list of finding dictionaries, each containing RuleID, Title,
+        Severity, and Description keys.
+    """
     findings = []
 
     # Check for FLAG_IMMUTABLE or FLAG_MUTABLE
@@ -147,8 +175,15 @@ def analyze_pending_intent(context, full_text, match_start):
     return findings
 
 
-def check_target_sdk(mani_path):
-    """Check targetSdkVersion from manifest."""
+def check_target_sdk(mani_path: str) -> int:
+    """Check targetSdkVersion from AndroidManifest.xml.
+
+    Args:
+        mani_path: Path to the AndroidManifest.xml file.
+
+    Returns:
+        The targetSdkVersion as an integer, or 0 if not found or on error.
+    """
     try:
         tree = etree.parse(mani_path)
         ns = '{http://schemas.android.com/apk/res/android}'
@@ -163,8 +198,16 @@ def check_target_sdk(mani_path):
     return 0
 
 
-def iter_text(src_dir, apk_path=None):
-    """Iterate over source files."""
+def iter_text(src_dir: str, apk_path: str | None = None):
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuples of (file_path, file_content) for each source file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -189,7 +232,18 @@ def iter_text(src_dir, apk_path=None):
                         continue
 
 
-def main():
+def main() -> None:
+    """Scan for PendingIntent vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+        sys.argv[4]: Optional path to AndroidManifest.xml
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             print("Usage: scan_pending_intents.py <src_dir> <out.csv> [apk_path] [manifest.xml]", file=sys.stderr)

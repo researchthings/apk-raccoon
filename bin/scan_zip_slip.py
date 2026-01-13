@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
-"""
-Zip Slip Path Traversal Scanner v1.0
+"""Scan for Zip Slip path traversal vulnerabilities.
 
 Detects Zip Slip vulnerabilities (CVE-2018-1000001) where archive extraction
 can write files outside the target directory via path traversal sequences.
 
-Checks for:
-- ZipEntry.getName() used without path validation
-- ZipInputStream extraction without canonicalization
-- Missing "../" checks in archive handling
-- Unsafe file path construction from archive entries
+Checks:
+    - ZipEntry.getName() used without path validation
+    - ZipInputStream extraction without canonicalization
+    - Missing "../" checks in archive handling
+    - Unsafe file path construction from archive entries
 
-References:
-- https://snyk.io/research/zip-slip-vulnerability
-- https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0025/
-- https://cwe.mitre.org/data/definitions/22.html
+OWASP MASTG Coverage:
+    - MASTG-TEST-0025: Testing for Path Traversal
 
-OWASP Alignment: MASVS-CODE-4
-CWE: CWE-22 (Path Traversal)
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -34,13 +32,28 @@ CSV_FIELDNAMES = ["Source", "RuleID", "Title", "Location", "Evidence", "Severity
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def iter_source_files(src_dir: str) -> Iterator[tuple[str, str]]:
-    """Iterate over source files, yielding (path, content)."""
+    """Iterate over source files, yielding path and content.
+
+    Args:
+        src_dir: Directory containing source files to scan.
+
+    Yields:
+        Tuples of (file_path, file_content) for each matching file.
+    """
     src_path = Path(src_dir)
     if not src_path.exists():
         return
@@ -154,7 +167,14 @@ SMALI_PATTERNS = [
 
 
 def scan_for_zip_slip(src_dir: str) -> list[dict]:
-    """Scan source code for Zip Slip vulnerabilities."""
+    """Scan source code for Zip Slip path traversal vulnerabilities.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
     seen = set()
 
@@ -239,8 +259,13 @@ def scan_for_zip_slip(src_dir: str) -> list[dict]:
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -253,7 +278,16 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for Zip Slip vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to source directory
+        sys.argv[2]: Output CSV path
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <src_dir> <output.csv>", file=sys.stderr)
         sys.exit(1)

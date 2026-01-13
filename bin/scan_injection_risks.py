@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
+"""Scan for injection vulnerabilities in Android source code.
 
-# Author: Randy Grant
-# Date: 11-07-2025
-# Version: 1.0
-# Script to scan for input/output validation issues (e.g., injection risks) in Android code
-# Why: Addresses OWASP M4; lack of validation leads to SQLi, XSS, etc. Flags patterns for adding sanitization in remediation.
+Detects SQL injection, command injection, XSS, and path traversal risks
+by identifying unsafe string concatenation in security-sensitive contexts.
 
-import sys, os, re, csv, zipfile
+OWASP MASTG Coverage:
+    - MASTG-TEST-0008: SQL injection detection
+    - MASTG-TEST-0009: Command injection detection
+    - MASTG-TEST-0010: Path traversal detection
+
+Author: Randy Grant
+Date: 11-07-2025
+Version: 1.0
+"""
+
+import csv
+import os
+import re
+import sys
 import traceback
+import zipfile
 
 INJ_PATTERNS = [
   ("INJ_SQL", r'(?i)execute\s*\(\s*["\'].*\+|rawQuery\s*\(\s*["\'].*\+', "High"),  # Dynamic SQL
@@ -17,8 +29,16 @@ INJ_PATTERNS = [
   ("INJ_NO_VALIDATION", r'(?i)getParameter|getIntentExtra\s*\).*?(?!validate|sanitize)', "Low"),  # Input without validation heuristic
 ]
 
-def iter_text(src_dir, apk_path):
-    # Why: Standard iterator for decompiled or raw files.
+def iter_text(src_dir: str, apk_path: str):
+    """Iterate over code files yielding (path, content) tuples.
+
+    Args:
+        src_dir: Path to decompiled source directory.
+        apk_path: Optional path to APK file for direct scanning.
+
+    Yields:
+        Tuple of (file_path, file_content) for each readable file.
+    """
     if os.path.isdir(src_dir):
         for root, _, files in os.walk(src_dir):
             for fn in files:
@@ -39,7 +59,17 @@ def iter_text(src_dir, apk_path):
                         print(f"Warning: Failed to read ZIP entry {zi.filename}: {str(e)}")
                         continue
 
-def main():
+def main() -> None:
+    """Scan files for injection risks and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to decompiled source directory
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to APK file
+
+    Raises:
+        SystemExit: If arguments missing or scanning fails.
+    """
     try:
         if len(sys.argv) < 3:
             raise ValueError("Usage: scan_injection_risks.py <src_dir> <out.csv> [apk_path]")

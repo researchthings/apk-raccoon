@@ -31,7 +31,7 @@ DO_SETUP=1            # install tools (but in Docker, this is handled in build)
 DO_DECOMPILE=1        # try jadx (fallback apktool)
 DO_STATIC=1           # run Python scanners
 DO_SBOM=1             # run syft+grype
-DO_DYNAMIC=1          # adb dynamic probe
+DO_DYNAMIC=0          # adb dynamic probe (disabled by default - static analysis tool)
 OFFLINE=0             # if 1, skip MITRE fetch (use cached if present)
 STRICT_MODE=0         # if 1, fail on any scanner failure (for CI)
 DO_HTML=0             # if 1, generate HTML report
@@ -48,16 +48,16 @@ Usage: $(basename "$0") [options] <app.apk>
 Options:
   --no-setup        Skip tool bootstrap (assumes Docker has them)
   --no-decompile    Skip jadx/apktool decompile
-  --no-static       Skip Python static scanners (30 scanners)
+  --no-static       Skip Python static scanners (31 scanners)
   --no-sbom         Skip SBOM + CVE step (syft/grype)
-  --no-dynamic      Skip ADB dynamic probe
+  --dynamic         Enable ADB dynamic probe (requires connected device)
   --offline         Do not fetch MITRE (use cache if exists)
   --strict          Fail on any scanner failure (for CI/CD)
   --html            Generate HTML report (findings.html)
   --sarif           Generate SARIF report for CI/CD (findings.sarif)
   -h, --help        Show help
 
-Scanners (30 total):
+Scanners (31 total):
   Core: Manifest, Secrets, Crypto, WebView, Storage/Logging, Network,
         Auth, Injection, Binary Protections, Privacy, Cert Pinning,
         Content Providers, PendingIntents
@@ -65,7 +65,7 @@ Scanners (30 total):
             Broadcasts, Native Libraries, Dynamic Loading
   Advanced: Zip Slip, Serialization, Fragment Injection, XXE,
             Implicit Intents, Clipboard, Keyboard Cache, Random,
-            APK Signature, Deprecated APIs
+            APK Signature, Deprecated APIs, Screenshot Protection
 
 Output Formats:
   CSV (default), HTML (--html), SARIF (--sarif)
@@ -81,7 +81,7 @@ while [[ $# -gt 0 ]]; do
     --no-decompile) DO_DECOMPILE=0; shift;;
     --no-static) DO_STATIC=0; shift;;
     --no-sbom) DO_SBOM=0; shift;;
-    --no-dynamic) DO_DYNAMIC=0; shift;;
+    --dynamic) DO_DYNAMIC=1; shift;;
     --offline) OFFLINE=1; shift;;
     --strict) STRICT_MODE=1; shift;;
     --html) DO_HTML=1; shift;;
@@ -138,6 +138,7 @@ preflight_check() {
     "bin/scan_random.py"
     "bin/scan_apk_signature.py"
     "bin/scan_deprecated_apis.py"
+    "bin/scan_screenshot_protection.py"
     # Output generators
     "bin/generate_html_report.py"
     "bin/generate_sarif.py"
@@ -219,12 +220,17 @@ run_scanner() {
 # Why: In Docker, tools are pre-installed. This section is for host runs or verification, but skipped by default in container.
 if [[ $DO_SETUP -eq 1 ]]; then
   echo "[*] Verifying required tools (assumed installed in Docker)..."
-  for tool in unzip zip jadx apktool syft grype apkanalyzer adb python3; do
+  for tool in unzip zip jadx apktool syft grype apkanalyzer python3; do
     if ! command -v "$tool" >/dev/null 2>&1; then
       echo "[!] Error: Missing tool $tool - Install via package manager or Dockerfile." >&2
       exit 2
     fi
   done
+  # adb only required if --dynamic is enabled
+  if [[ $DO_DYNAMIC -eq 1 ]] && ! command -v adb >/dev/null 2>&1; then
+    echo "[!] Error: --dynamic requires adb but it's not found." >&2
+    exit 2
+  fi
   # Python deps handled in Docker via UV
 fi
 
@@ -239,6 +245,7 @@ if [[ $DO_DECOMPILE -eq 1 ]]; then
   # Try jadx first
   if command -v jadx >/dev/null 2>&1; then
     echo "[*] Decompiling with jadx (this can take a while)..."
+    echo "    Note: jadx 'ERROR' messages are normal for obfuscated/protected APKs"
     if jadx --no-inline-anonymous --deobf --escape-unicode -r --show-bad-code -d "$DECOMPILE_OUT" "$APK_LOCAL"; then
       # Verify jadx actually produced Java sources
       if [[ -d "$DECOMPILE_OUT/sources" ]] && [[ -n "$(find "$DECOMPILE_OUT/sources" -name '*.java' 2>/dev/null | head -1)" ]]; then
@@ -249,7 +256,7 @@ if [[ $DO_DECOMPILE -eq 1 ]]; then
         echo "[!] Warning: jadx completed but produced no Java sources."
       fi
     else
-      echo "[!] Warning: jadx reported errors."
+      echo "[!] Warning: jadx exited with errors (obfuscated code may limit scan accuracy)."
     fi
   fi
 
@@ -335,81 +342,83 @@ fi
 
 # ---------------- Static scanners ----------------
 # Why: Static analysis covers code-based vulns without runtime; parallelizable for speed.
-# Expanded to 30 scanners for comprehensive OWASP MASVS/MSTG coverage.
+# Expanded to 31 scanners for comprehensive OWASP MASVS/MSTG coverage.
 if [[ $DO_STATIC -eq 1 ]]; then
-  echo "[*] Running static analyzers (30 scanners)..."
+  echo "[*] Running static analyzers (31 scanners)..."
   echo ""
 
   # Core scanners (original)
-  echo "    [1/30] Manifest analysis..."
+  echo "    [1/31] Manifest analysis..."
   run_scanner "Manifest scan"        bin/scan_manifest.py           "$MANI/AndroidManifest.xml" "$SCANS/manifest.csv"
-  echo "    [2/30] Secret detection..."
+  echo "    [2/31] Secret detection..."
   run_scanner "Secrets scan"         bin/scan_secrets.py            "$SRC_DIR"                   "$SCANS/secrets.csv"         "$APK_LOCAL"
-  echo "    [3/30] Cryptography issues..."
+  echo "    [3/31] Cryptography issues..."
   run_scanner "Crypto scan"          bin/scan_crypto_issues.py      "$SRC_DIR"                   "$SCANS/crypto.csv"          "$APK_LOCAL"
-  echo "    [4/30] WebView security..."
+  echo "    [4/31] WebView security..."
   run_scanner "WebView scan"         bin/scan_webview.py            "$SRC_DIR"                   "$SCANS/webview.csv"         "$APK_LOCAL"
-  echo "    [5/30] Storage and logging..."
+  echo "    [5/31] Storage and logging..."
   run_scanner "Storage/logging scan" bin/scan_storage_logging.py "$SRC_DIR"                   "$SCANS/logging_storage.csv" "$APK_LOCAL"
-  echo "    [6/30] Network security..."
+  echo "    [6/31] Network security..."
   run_scanner "Network scan"         bin/scan_network_security.py "$SRC_DIR" "$MANI/AndroidManifest.xml" "$SCANS/network.csv" "$APK_LOCAL"
-  echo "    [7/30] Authentication issues..."
+  echo "    [7/31] Authentication issues..."
   run_scanner "Auth scan"            bin/scan_auth_issues.py "$SRC_DIR" "$MANI/AndroidManifest.xml" "$SCANS/auth.csv" "$APK_LOCAL"
-  echo "    [8/30] Injection risks..."
+  echo "    [8/31] Injection risks..."
   run_scanner "Injection scan"       bin/scan_injection_risks.py "$SRC_DIR" "$SCANS/injection.csv" "$APK_LOCAL"
-  echo "    [9/30] Binary protections..."
+  echo "    [9/31] Binary protections..."
   run_scanner "Binary protections scan" bin/scan_binary_protections.py "$SRC_DIR" "$APK_LOCAL" "$SCANS/binary_protections.csv"
-  echo "    [10/30] Privacy issues..."
+  echo "    [10/31] Privacy issues..."
   run_scanner "Privacy scan"         bin/scan_privacy_issues.py "$SRC_DIR" "$SCANS/privacy.csv" "$APK_LOCAL" "$MANI/AndroidManifest.xml"
-  echo "    [11/30] Certificate pinning..."
+  echo "    [11/31] Certificate pinning..."
   run_scanner "Cert pinning scan"    bin/scan_cert_pinning.py "$SRC_DIR" "$SCANS/cert_pinning.csv" "$APK_LOCAL"
-  echo "    [12/30] Content providers..."
+  echo "    [12/31] Content providers..."
   run_scanner "Content provider scan" bin/scan_content_providers.py "$SRC_DIR" "$MANI/AndroidManifest.xml" "$SCANS/content_providers.csv" "$APK_LOCAL"
-  echo "    [13/30] PendingIntent security..."
+  echo "    [13/31] PendingIntent security..."
   run_scanner "PendingIntent scan"   bin/scan_pending_intents.py "$SRC_DIR" "$SCANS/pending_intents.csv" "$APK_LOCAL" "$MANI/AndroidManifest.xml"
 
   # Extended scanners
   echo ""
-  echo "    [14/30] Firebase misconfiguration..."
+  echo "    [14/31] Firebase misconfiguration..."
   run_scanner "Firebase scan"        bin/scan_firebase.py "$SRC_DIR" "$SCANS/firebase.csv" "$APK_LOCAL"
-  echo "    [15/30] Task hijacking (StrandHogg)..."
+  echo "    [15/31] Task hijacking (StrandHogg)..."
   run_scanner "Task hijacking scan"  bin/scan_task_hijacking.py "$MANI/AndroidManifest.xml" "$SCANS/task_hijacking.csv" "$SRC_DIR"
-  echo "    [16/30] Deep link security..."
+  echo "    [16/31] Deep link security..."
   run_scanner "Deep links scan"      bin/scan_deep_links.py "$MANI/AndroidManifest.xml" "$SCANS/deep_links.csv" "$SRC_DIR"
-  echo "    [17/30] Tapjacking/overlay attacks..."
+  echo "    [17/31] Tapjacking/overlay attacks..."
   run_scanner "Tapjacking scan"      bin/scan_tapjacking.py "$MANI/AndroidManifest.xml" "$SCANS/tapjacking.csv" "$SRC_DIR"
-  echo "    [18/30] Broadcast receiver security..."
+  echo "    [18/31] Broadcast receiver security..."
   run_scanner "Broadcasts scan"      bin/scan_broadcasts.py "$MANI/AndroidManifest.xml" "$SCANS/broadcasts.csv" "$SRC_DIR"
-  echo "    [19/30] Native library security..."
+  echo "    [19/31] Native library security..."
   run_scanner "Native libs scan"     bin/scan_native_libs.py "$SCANS/native_libs.csv" "$APK_LOCAL" "$SRC_DIR"
-  echo "    [20/30] Dynamic code loading..."
+  echo "    [20/31] Dynamic code loading..."
   run_scanner "Dynamic loading scan" bin/scan_dynamic_loading.py "$SRC_DIR" "$SCANS/dynamic_loading.csv"
 
   # Advanced scanners
   echo ""
-  echo "    [21/30] Zip slip (path traversal)..."
+  echo "    [21/31] Zip slip (path traversal)..."
   run_scanner "Zip slip scan"        bin/scan_zip_slip.py "$SRC_DIR" "$SCANS/zip_slip.csv"
-  echo "    [22/30] Unsafe deserialization..."
+  echo "    [22/31] Unsafe deserialization..."
   run_scanner "Serialization scan"   bin/scan_serialization.py "$SRC_DIR" "$SCANS/serialization.csv"
-  echo "    [23/30] Fragment injection..."
+  echo "    [23/31] Fragment injection..."
   run_scanner "Fragment injection scan" bin/scan_fragment_injection.py "$SRC_DIR" "$SCANS/fragment_injection.csv" "$MANI/AndroidManifest.xml"
-  echo "    [24/30] XXE injection..."
+  echo "    [24/31] XXE injection..."
   run_scanner "XXE scan"             bin/scan_xxe.py "$SRC_DIR" "$SCANS/xxe.csv"
-  echo "    [25/30] Implicit intent leakage..."
+  echo "    [25/31] Implicit intent leakage..."
   run_scanner "Implicit intents scan" bin/scan_implicit_intents.py "$SRC_DIR" "$SCANS/implicit_intents.csv"
-  echo "    [26/30] Clipboard data exposure..."
+  echo "    [26/31] Clipboard data exposure..."
   run_scanner "Clipboard scan"       bin/scan_clipboard.py "$SRC_DIR" "$SCANS/clipboard.csv"
-  echo "    [27/30] Keyboard cache issues..."
+  echo "    [27/31] Keyboard cache issues..."
   run_scanner "Keyboard cache scan"  bin/scan_keyboard_cache.py "$SRC_DIR" "$SCANS/keyboard_cache.csv"
-  echo "    [28/30] Insecure random..."
+  echo "    [28/31] Insecure random..."
   run_scanner "Random scan"          bin/scan_random.py "$SRC_DIR" "$SCANS/random.csv"
-  echo "    [29/30] APK signature analysis..."
+  echo "    [29/31] APK signature analysis..."
   run_scanner "APK signature scan"   bin/scan_apk_signature.py "$SCANS/apk_signature.csv" "$APK_LOCAL" "$SRC_DIR"
-  echo "    [30/30] Deprecated API usage..."
+  echo "    [30/31] Deprecated API usage..."
   run_scanner "Deprecated APIs scan" bin/scan_deprecated_apis.py "$SRC_DIR" "$SCANS/deprecated_apis.csv"
+  echo "    [31/31] Screenshot protection..."
+  run_scanner "Screenshot protection scan" bin/scan_screenshot_protection.py "$SRC_DIR" "$SCANS/screenshot_protection.csv" "$APK_LOCAL"
 
   echo ""
-  echo "[+] Static analysis complete (30 scanners)"
+  echo "[+] Static analysis complete (31 scanners)"
 fi
 
 # ---------------- SBOM + CVEs ----------------

@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""
-Task Hijacking / StrandHogg Vulnerability Scanner v1.0
+"""Scan for Task Hijacking (StrandHogg) vulnerabilities.
 
-Detects Android task hijacking vulnerabilities (StrandHogg 1.0 and 2.0):
-- Dangerous taskAffinity + launchMode combinations
-- Activities vulnerable to task injection
-- minSdkVersion < 30 without mitigations
-
-StrandHogg allows malicious apps to hijack legitimate app tasks and present
+Detects Android task hijacking vulnerabilities (StrandHogg 1.0 and 2.0)
+that allow malicious apps to hijack legitimate app tasks and present
 counterfeit screens, tricking users into divulging sensitive information.
 
-References:
-- https://developer.android.com/privacy-and-security/risks/strandhogg
-- https://promon.io/security-news/the-strandhogg-vulnerability
-- https://www.guardsquare.com/mobile-app-security-research-center/malware/task-hijacking-attacks
+Checks:
+    - Dangerous taskAffinity + launchMode combinations
+    - Activities vulnerable to task injection
+    - minSdkVersion < 30 without mitigations
+    - allowTaskReparenting enabled
 
-OWASP Alignment: MASVS-PLATFORM-2, MASVS-RESILIENCE-1
+OWASP MASTG Coverage:
+    - MASTG-TEST-0028: Testing for Task Hijacking
+    - MASTG-TEST-0029: Testing for StrandHogg
+
+Author: Randy Grant
+Date: 01-09-2026
+Version: 1.0
 """
 
 from __future__ import annotations
@@ -39,13 +41,28 @@ DANGEROUS_LAUNCH_MODES = {"singleTask", "singleInstance"}
 
 
 def truncate(s: str, max_len: int = 150) -> str:
-    """Truncate string for evidence field."""
+    """Truncate string for CSV evidence field.
+
+    Args:
+        s: The string to truncate.
+        max_len: Maximum length before truncation.
+
+    Returns:
+        Truncated string with ellipsis if needed, newlines removed.
+    """
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:max_len] + "..." if len(s) > max_len else s
 
 
 def parse_manifest(manifest_path: str) -> ET.Element | None:
-    """Parse AndroidManifest.xml and return root element."""
+    """Parse AndroidManifest.xml and return root element.
+
+    Args:
+        manifest_path: Path to the AndroidManifest.xml file.
+
+    Returns:
+        Root Element of the parsed manifest, or None on error.
+    """
     try:
         # Handle namespace
         ET.register_namespace("android", ANDROID_NS)
@@ -57,12 +74,27 @@ def parse_manifest(manifest_path: str) -> ET.Element | None:
 
 
 def get_android_attr(elem: ET.Element, attr: str) -> str | None:
-    """Get Android namespace attribute value."""
+    """Get Android namespace attribute value from element.
+
+    Args:
+        elem: The XML element to query.
+        attr: The attribute name without namespace prefix.
+
+    Returns:
+        The attribute value, or None if not found.
+    """
     return elem.get(f"{{{ANDROID_NS}}}{attr}")
 
 
 def get_min_sdk(root: ET.Element) -> int:
-    """Extract minSdkVersion from manifest."""
+    """Extract minSdkVersion from manifest.
+
+    Args:
+        root: Root element of the parsed manifest.
+
+    Returns:
+        The minSdkVersion as integer, or 1 if not found.
+    """
     uses_sdk = root.find("uses-sdk")
     if uses_sdk is not None:
         min_sdk = get_android_attr(uses_sdk, "minSdkVersion")
@@ -75,7 +107,14 @@ def get_min_sdk(root: ET.Element) -> int:
 
 
 def get_target_sdk(root: ET.Element) -> int:
-    """Extract targetSdkVersion from manifest."""
+    """Extract targetSdkVersion from manifest.
+
+    Args:
+        root: Root element of the parsed manifest.
+
+    Returns:
+        The targetSdkVersion as integer, or 1 if not found.
+    """
     uses_sdk = root.find("uses-sdk")
     if uses_sdk is not None:
         target_sdk = get_android_attr(uses_sdk, "targetSdkVersion")
@@ -87,8 +126,14 @@ def get_target_sdk(root: ET.Element) -> int:
     return 1
 
 
-def check_activity_task_hijacking(activity: ET.Element, min_sdk: int, findings: list[dict]):
-    """Check an activity for task hijacking vulnerabilities."""
+def check_activity_task_hijacking(activity: ET.Element, min_sdk: int, findings: list[dict]) -> None:
+    """Check an activity element for task hijacking vulnerabilities.
+
+    Args:
+        activity: The activity XML element to analyze.
+        min_sdk: The app's minimum SDK version.
+        findings: List to append findings to (modified in place).
+    """
     name = get_android_attr(activity, "name") or "Unknown"
     task_affinity = get_android_attr(activity, "taskAffinity")
     launch_mode = get_android_attr(activity, "launchMode")
@@ -148,8 +193,13 @@ def check_activity_task_hijacking(activity: ET.Element, min_sdk: int, findings: 
         })
 
 
-def check_application_attributes(app_elem: ET.Element, findings: list[dict]):
-    """Check application-level task affinity settings."""
+def check_application_attributes(app_elem: ET.Element, findings: list[dict]) -> None:
+    """Check application-level task affinity settings.
+
+    Args:
+        app_elem: The application XML element to analyze.
+        findings: List to append findings to (modified in place).
+    """
     task_affinity = get_android_attr(app_elem, "taskAffinity")
     allow_task_reparenting = get_android_attr(app_elem, "allowTaskReparenting")
 
@@ -178,7 +228,14 @@ def check_application_attributes(app_elem: ET.Element, findings: list[dict]):
 
 
 def scan_code_for_context_startactivities(src_dir: str) -> list[dict]:
-    """Scan for StrandHogg 2.0 pattern: Context.startActivities() abuse."""
+    """Scan for StrandHogg 2.0 pattern: Context.startActivities() abuse.
+
+    Args:
+        src_dir: Directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries for startActivities usage patterns.
+    """
     findings = []
     seen = set()
 
@@ -214,7 +271,15 @@ def scan_code_for_context_startactivities(src_dir: str) -> list[dict]:
 
 
 def scan_for_task_hijacking(manifest_path: str, src_dir: str | None = None) -> list[dict]:
-    """Main scanning function for task hijacking vulnerabilities."""
+    """Scan for task hijacking (StrandHogg) vulnerabilities.
+
+    Args:
+        manifest_path: Path to AndroidManifest.xml file.
+        src_dir: Optional directory containing decompiled source files.
+
+    Returns:
+        List of finding dictionaries with vulnerability details.
+    """
     findings = []
 
     # Parse manifest
@@ -283,8 +348,13 @@ def scan_for_task_hijacking(manifest_path: str, src_dir: str | None = None) -> l
     return findings
 
 
-def write_findings_csv(output_path: str, findings: list[dict]):
-    """Write findings to CSV file."""
+def write_findings_csv(output_path: str, findings: list[dict]) -> None:
+    """Write findings to CSV file.
+
+    Args:
+        output_path: Path for the output CSV file.
+        findings: List of finding dictionaries to write.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -297,7 +367,17 @@ def write_findings_csv(output_path: str, findings: list[dict]):
     print(f"Wrote {len(findings)} finding(s) to {output_path}")
 
 
-def main():
+def main() -> None:
+    """Scan for task hijacking vulnerabilities and write findings to CSV.
+
+    Command line args:
+        sys.argv[1]: Path to AndroidManifest.xml
+        sys.argv[2]: Output CSV path
+        sys.argv[3]: Optional path to source directory
+
+    Raises:
+        SystemExit: If required arguments are missing.
+    """
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <manifest.xml> <output.csv> [src_dir]", file=sys.stderr)
         sys.exit(1)
